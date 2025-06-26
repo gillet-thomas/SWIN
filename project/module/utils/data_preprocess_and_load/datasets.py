@@ -16,75 +16,7 @@ import glob
 
 from sklearn.preprocessing import LabelEncoder, StandardScaler, MinMaxScaler, KBinsDiscretizer
 
-class BaseDataset(Dataset):
-    def __init__(self, **kwargs):
-        super().__init__()      
-        self.register_args(**kwargs)
-        self.sample_duration = self.sequence_length * self.stride_within_seq
-        self.stride = max(round(self.stride_between_seq * self.sample_duration),1)
-        self.data = self._set_data(self.root, self.subject_dict)
-    
-    def register_args(self,**kwargs):
-        for name,value in kwargs.items():
-            setattr(self,name,value)
-        self.kwargs = kwargs
-    
-    def load_sequence(self, subject_path, start_frame, sample_duration, num_frames=None): 
-        if self.contrastive:
-            num_frames = len(os.listdir(subject_path)) - 2
-            y = []
-            load_fnames = [f'frame_{frame}.pt' for frame in range(start_frame, start_frame+sample_duration,self.stride_within_seq)]
-            if self.with_voxel_norm:
-                load_fnames += ['voxel_mean.pt', 'voxel_std.pt']
 
-            for fname in load_fnames:
-                img_path = os.path.join(subject_path, fname)
-                y_loaded = torch.load(img_path).unsqueeze(0)
-                y.append(y_loaded)
-            y = torch.cat(y, dim=4)
-            
-            random_y = []
-            
-            full_range = np.arange(0, num_frames-sample_duration+1)
-            # exclude overlapping sub-sequences within a subject
-            exclude_range = np.arange(start_frame-sample_duration, start_frame+sample_duration)
-            available_choices = np.setdiff1d(full_range, exclude_range)
-            random_start_frame = np.random.choice(available_choices, size=1, replace=False)[0]
-            load_fnames = [f'frame_{frame}.pt' for frame in range(random_start_frame, random_start_frame+sample_duration,self.stride_within_seq)]
-            if self.with_voxel_norm:
-                load_fnames += ['voxel_mean.pt', 'voxel_std.pt']
-            for fname in load_fnames:
-                img_path = os.path.join(subject_path, fname)
-                y_loaded = torch.load(img_path).unsqueeze(0)
-                random_y.append(y_loaded)
-            random_y = torch.cat(random_y, dim=4)
-            return (y, random_y)
-
-        else: # without contrastive learning
-            y = []
-            if self.shuffle_time_sequence: # shuffle whole sequences
-                load_fnames = [f'frame_{frame}.pt' for frame in random.sample(list(range(0,num_frames)),sample_duration//self.stride_within_seq)]
-            else:
-                load_fnames = [f'frame_{frame}.pt' for frame in range(start_frame, start_frame+sample_duration,self.stride_within_seq)]
-            
-            if self.with_voxel_norm:
-                load_fnames += ['voxel_mean.pt', 'voxel_std.pt']
-                
-            for fname in load_fnames:
-                img_path = os.path.join(subject_path, fname)
-                y_i = torch.load(img_path).unsqueeze(0)
-                y.append(y_i)
-            y = torch.cat(y, dim=4)
-            return y
-
-    def __len__(self):
-        return  len(self.data)
-
-    def __getitem__(self, index):
-        raise NotImplementedError("Required function")
-
-    def _set_data(self, root, subject_dict):
-        raise NotImplementedError("Required function")
 
 class S1200(BaseDataset):
     def __init__(self, **kwargs):
@@ -156,6 +88,8 @@ class ABCD(BaseDataset):
     def _set_data(self, root, subject_dict):
         data = []
         img_root = os.path.join(root, 'img')
+
+        print("Root, subject_dict:", root, subject_dict)
 
         for i, subject_name in enumerate(subject_dict):
             sex, target = subject_dict[subject_name]
@@ -231,7 +165,6 @@ class ABCD(BaseDataset):
                 "sex": sex,
             } 
         
-
 class UKB(BaseDataset):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -338,3 +271,4 @@ class Dummy(BaseDataset):
                     "TR": 0,
                     "sex": sex,
                     } 
+

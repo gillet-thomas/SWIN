@@ -50,6 +50,7 @@ class LitClassifier(pl.LightningModule):
 
         # Heads
         if not self.hparams.pretraining:
+            print("LOADING HEAD, downstream_task: ", self.hparams.downstream_task)
             if self.hparams.downstream_task == 'sex' or self.hparams.downstream_task_type == 'classification' or self.hparams.scalability_check:
                 self.output_head = load_model("clf_mlp", self.hparams)
             elif self.hparams.downstream_task == 'age' or self.hparams.downstream_task == 'int_total' or self.hparams.downstream_task == 'int_fluid' or self.hparams.downstream_task_type == 'regression':
@@ -60,9 +61,6 @@ class LitClassifier(pl.LightningModule):
             raise NotImplementedError("output head should be defined")
 
         self.metric = Metrics()
-
-        if self.hparams.adjust_thresh:
-            self.threshold = 0
 
     def forward(self, x):
         return self.output_head(self.model(x))
@@ -106,7 +104,7 @@ class LitClassifier(pl.LightningModule):
         return img
     
     def _compute_logits(self, batch, augment_during_training=None):
-        fmri, subj, target_value, tr, sex = batch.values()
+        fmri, subj, target_value, tr = batch.values()
        
         if augment_during_training:
             fmri = self.augment(fmri)
@@ -131,7 +129,7 @@ class LitClassifier(pl.LightningModule):
     
     def _calculate_loss(self, batch, mode):
         if self.hparams.pretraining:
-            fmri, subj, target_value, tr, sex = batch.values()
+            fmri, subj, target_value, tr = batch.values()
             
             cond1 = (self.hparams.in_chans == 1 and not self.hparams.with_voxel_norm)
             assert cond1, "Wrong combination of options"
@@ -225,32 +223,7 @@ class LitClassifier(pl.LightningModule):
         
     
         if self.hparams.downstream_task == 'sex' or self.hparams.downstream_task_type == 'classification' or self.hparams.scalability_check:
-            if self.hparams.adjust_thresh:
-                # move threshold to maximize balanced accuracy
-                best_bal_acc = 0
-                best_thresh = 0
-                for thresh in np.arange(-5, 5, 0.01):
-                    bal_acc = balanced_accuracy_score(subj_targets.cpu(), (subj_avg_logits>=thresh).int().cpu())
-                    if bal_acc > best_bal_acc:
-                        best_bal_acc = bal_acc
-                        best_thresh = thresh
-                self.log(f"{mode}_best_thresh", best_thresh, sync_dist=True)
-                self.log(f"{mode}_best_balacc", best_bal_acc, sync_dist=True)
-                fpr, tpr, thresholds = roc_curve(subj_targets.cpu(), subj_avg_logits.cpu())
-                idx = np.argmax(tpr - fpr)
-                youden_thresh = thresholds[idx]
-                acc_func = BinaryAccuracy().to(total_out.device)
-                self.log(f"{mode}_youden_thresh", youden_thresh, sync_dist=True)
-                self.log(f"{mode}_youden_balacc", balanced_accuracy_score(subj_targets.cpu(), (subj_avg_logits>=youden_thresh).int().cpu()), sync_dist=True)
-
-                if mode == 'valid':
-                    self.threshold = youden_thresh
-                elif mode == 'test':
-                    bal_acc = balanced_accuracy_score(subj_targets.cpu(), (subj_avg_logits>=self.threshold).int().cpu())
-                    self.log(f"{mode}_balacc_from_valid_thresh", bal_acc, sync_dist=True)
-            else:
-                acc_func = BinaryAccuracy().to(total_out.device)
-                
+            acc_func = BinaryAccuracy().to(total_out.device)
             auroc_func = BinaryAUROC().to(total_out.device)
             acc = acc_func((subj_avg_logits >= 0).int(), subj_targets)
             #print((subj_avg_logits>=0).int().cpu())
@@ -473,48 +446,3 @@ class LitClassifier(pl.LightningModule):
             return [optim], [scheduler]
         else:
             return optim
-
-    @staticmethod
-    def add_model_specific_args(parent_parser):
-        parser = ArgumentParser(parents=[parent_parser], add_help=False, formatter_class=ArgumentDefaultsHelpFormatter)
-        group = parser.add_argument_group("Default classifier")
-        # training related
-        group.add_argument("--grad_clip", action='store_true', help="whether to use gradient clipping")
-        group.add_argument("--optimizer", type=str, default="AdamW", help="which optimizer to use [AdamW, SGD]")
-        group.add_argument("--use_scheduler", action='store_true', help="whether to use scheduler")
-        group.add_argument("--weight_decay", type=float, default=0.01, help="weight decay for optimizer")
-        group.add_argument("--learning_rate", type=float, default=1e-3, help="learning rate for optimizer")
-        group.add_argument("--momentum", type=float, default=0, help="momentum for SGD")
-        group.add_argument("--gamma", type=float, default=1.0, help="decay for exponential LR scheduler")
-        group.add_argument("--cycle", type=float, default=0.3, help="cycle size for CosineAnnealingWarmUpRestarts")
-        group.add_argument("--milestones", nargs="+", default=[100, 150], type=int, help="lr scheduler")
-        group.add_argument("--adjust_thresh", action='store_true', help="whether to adjust threshold for valid/test")
-        
-        # pretraining-related
-        group.add_argument("--use_contrastive", action='store_true', help="whether to use contrastive learning (specify --contrastive_type argument as well)")
-        group.add_argument("--contrastive_type", default=0, type=int, help="combination of contrastive losses to use [1: Use the Instance contrastive loss function, 2: Use the local-local temporal contrastive loss function, 3: Use the sum of both loss functions]")
-        group.add_argument("--pretraining", action='store_true', help="whether to use pretraining")
-        group.add_argument("--augment_during_training", action='store_true', help="whether to augment input images during training")
-        group.add_argument("--augment_only_affine", action='store_true', help="whether to only apply affine augmentation")
-        group.add_argument("--augment_only_intensity", action='store_true', help="whether to only apply intensity augmentation")
-        group.add_argument("--temperature", default=0.1, type=float, help="temperature for NTXentLoss")
-        
-        # model related
-        group.add_argument("--model", type=str, default="none", help="which model to be used")
-        group.add_argument("--in_chans", type=int, default=1, help="Channel size of input image")
-        group.add_argument("--embed_dim", type=int, default=24, help="embedding size (recommend to use 24, 36, 48)")
-        group.add_argument("--window_size", nargs="+", default=[4, 4, 4, 4], type=int, help="window size from the second layers")
-        group.add_argument("--first_window_size", nargs="+", default=[2, 2, 2, 2], type=int, help="first window size")
-        group.add_argument("--patch_size", nargs="+", default=[6, 6, 6, 1], type=int, help="patch size")
-        group.add_argument("--depths", nargs="+", default=[2, 2, 6, 2], type=int, help="depth of layers in each stage")
-        group.add_argument("--num_heads", nargs="+", default=[3, 6, 12, 24], type=int, help="The number of heads for each attention layer")
-        group.add_argument("--c_multiplier", type=int, default=2, help="channel multiplier for Swin Transformer architecture")
-        group.add_argument("--last_layer_full_MSA", type=str2bool, default=False, help="whether to use full-scale multi-head self-attention at the last layers")
-        group.add_argument("--clf_head_version", type=str, default="v1", help="clf head version, v2 has a hidden layer")
-        group.add_argument("--attn_drop_rate", type=float, default=0, help="dropout rate of attention layers")
-
-        # others
-        group.add_argument("--scalability_check", action='store_true', help="whether to check scalability")
-        group.add_argument("--process_code", default=None, help="Slurm code/PBS code. Use this argument if you want to save process codes to your log")
-        
-        return parser
