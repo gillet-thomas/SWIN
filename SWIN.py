@@ -47,6 +47,7 @@ class ADNISwiFTDataset(Dataset):
         meta_df = pd.read_csv(self.config['csv_path'], usecols=['ID', 'Subject', 'Sex', 'Age', 'Path_fMRI_brain'])
         
         # Filtering
+        print(f"Filtering data for {self.config['downstream_task']} task...")
         if self.config['downstream_task'] == 'age_group':
             meta_df = meta_df[(meta_df['Age'] < 69) | (meta_df['Age'] > 78)]
             meta_df["target"] = meta_df["Age"].apply(lambda x: 0 if x < 69 else 1)
@@ -149,16 +150,19 @@ class Model(nn.Module):
             num_heads=config['num_heads'],
             c_multiplier=config['c_multiplier'],
             last_layer_full_MSA=config['last_layer_full_MSA'],
-            drop_rate=config['attn_drop_rate'],
-            drop_path_rate=config['attn_drop_rate'],
-            attn_drop_rate=config['attn_drop_rate']
+            attn_drop_rate=config['dropout']
         )
         num_tokens = config['embed_dim'] * (config['c_multiplier'] ** (config['n_stages'] - 1))
         self.output_head = mlp(num_classes=2, num_tokens = num_tokens)
 
     def forward(self, x):
         x = self.model(x)           # input ([8, 1, 112, 112, 112, 20]) -> ([8, 288, 2, 2, 2, 20])
-        x = self.output_head(x)     # ([8, 288, 2, 2, 2, 20]) -> ([8, 1])
+        x = self.output_head(x)     # ([8, 288, 2, 2, 2, 20]) -> ([8, 1])   
+        return x
+
+    def get_embeddings(self, x):
+        x = self.model(x)           # input ([8, 1, 112, 112, 112, 20]) -> ([8, 288, 2, 2, 2, 20])
+        x = x.view(x.size(0), -1)   # Flattens ([8, 288, 2, 2, 2, 20]) -> ([8, 4608])
         return x
 
 class Trainer():
@@ -177,7 +181,7 @@ class Trainer():
 
         self.scaler = torch.amp.GradScaler()       # for Automatic Mixed Precision
         self.criterion = nn.BCEWithLogitsLoss()
-        self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.config['learning_rate'])
+        self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.config['learning_rate'], weight_decay=self.config['weight_decay'])
         self.log_interval = len(self.dataloader) // 10  # Log every 10% of batches
 
         total_params = sum(p.numel() for p in self.model.parameters())
@@ -281,6 +285,7 @@ if __name__ == "__main__":
 
     config['device'] = args.cuda
     config["wandb_mode"] = "online" if args.wandb else "disabled"
+    config['downstream_task'] = args.task # Update config with task from args
     device = torch.device(f"cuda:{args.cuda}" if torch.cuda.is_available() else "cpu")
 
     wandb.init(
