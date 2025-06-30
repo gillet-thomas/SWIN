@@ -32,11 +32,11 @@ def plot_embeddings(model, dataloader, config, mode):
 
     print(f"Performing {method} dimensionality reduction...")
     if method == 'tsne':
-        perplexity = 30 # 30 or 50
-        reducer = TSNE(n_components=2, random_state=42, perplexity=perplexity, n_iter=1000)
+        param = 30 # 30 or 50
+        reducer = TSNE(n_components=2, random_state=42, perplexity=param, n_iter=1000)
     elif method == 'umap':
-        neighbors = 100 # 50 or 100
-        reducer = umap.UMAP(n_components=2, random_state=42, n_neighbors=neighbors, min_dist=0.1)
+        param = 100 # 50 or 100
+        reducer = umap.UMAP(n_components=2, random_state=42, n_neighbors=param, min_dist=0.1)
 
     embedding_results = reducer.fit_transform(all_embeddings)
 
@@ -67,12 +67,20 @@ def plot_embeddings(model, dataloader, config, mode):
     # Save the plot
     embedding_plot_dir = './visualization/maps'
     os.makedirs(embedding_plot_dir, exist_ok=True)
-    # embedding_plot_path = os.path.join(embedding_plot_dir, f'{method}_{config["map_task"]}_{mode}_{datetime.datetime.now().strftime("%Y%m%d-%H%M%S")}.png')
-    embedding_plot_path = os.path.join(embedding_plot_dir, f'{method}_{config["map_task"]}_{mode}_{perplexity}.png')
-    # embedding_plot_path = os.path.join(embedding_plot_dir, f'{method}_{config["map_task"]}_{mode}_{neighbors}.png')
+
+    file_name = get_file_name(method, mode, param)
+    embedding_plot_path = os.path.join(embedding_plot_dir, file_name)
+    
     plt.savefig(embedding_plot_path, dpi=300)
     print(f"{method.upper()} plot saved to {embedding_plot_path}")
     
+
+def get_file_name(method, mode, param=None):
+    if param is None:
+        return f'{method}_{config["map_task"]}_{mode}_{datetime.datetime.now().strftime("%Y%m%d-%H%M%S")}.png'
+    else:
+        return f'{method}_{config["map_task"]}_{mode}_{param}.png' # param is perplexity or neighbors
+
 
 # Load model
 cuda_id = 2

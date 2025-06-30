@@ -24,7 +24,7 @@ cuda_id = 0
 target = 1
 generate_maps = True
 max_iter = 20
-save_dir = os.path.join(os.getcwd(),'visualization')
+save_dir = os.path.join(os.getcwd(),'visualization/gradients')
 
 # Load dataset
 config = yaml.safe_load(open("data/config.yaml", "r"))
