@@ -20,10 +20,10 @@ from nilearn import plotting
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-cuda_id = 0
+cuda_id = 2
 target = 1
 generate_maps = True
-max_iter = 20
+max_iter = 25
 save_dir = os.path.join(os.getcwd(),'visualization/gradients')
 
 # Load dataset
@@ -36,10 +36,12 @@ model.to(device=cuda_id) if torch.cuda.is_available() else model
 model.load_state_dict(torch.load(best_model_path))
 model.eval()
 print(f"Using model from {best_model_path}")
+print(f"Running on {len(test_loader)} samples")
 
 # Load attribution method
-integrated_gradients = IntegratedGradients(model)
-noise_tunnel = NoiseTunnel(integrated_gradients)    
+# integrated_gradients = IntegratedGradients(model)
+# noise_tunnel = NoiseTunnel(integrated_gradients)   
+gradient_shap = Occlusion(model)
 
 kwargs = {
     "nt_samples": 4,
@@ -64,12 +66,16 @@ def generate_ig_maps():
         #only choose corrected samples
         if pred_int == data_target: # Of the subjects that corrected
             if (data_target == 0 and pred_prob <= 0.25) or (data_target == 1 and pred_prob >= 0.75):
-                file_dir = os.path.join(save_dir, f'ADNI_{config["map_task"]}_target{data_target}')
+                file_dir = os.path.join(save_dir, f'ADNI_{config["map_task"]}_target{target}')
                 os.makedirs(file_dir,exist_ok=True)
                 file_path = os.path.join(file_dir, f"{subj_name}_{start_frame_idx.item()}.pt")
                 if not os.path.exists(file_path):
-                    result = noise_tunnel.attribute(data_fmri,baselines=data_fmri[0,0,0,0,0,0].item(),target=None,**kwargs)
-                    result = result.squeeze().cpu() # 112 112 112 20
+                    num_gradient_shap_baselines = 5 # You can increase this for more robustness, but it will be slower
+                    baselines_for_gradshap = torch.zeros_like(data_fmri).repeat(num_gradient_shap_baselines, 1, 1, 1, 1, 1)
+                    baselines_for_gradshap = baselines_for_gradshap.to(data_fmri.device) # Ensure baselines are on the same device
+
+                    result = gradient_shap.attribute(data_fmri, baselines=baselines_for_gradshap, target=None)
+
                     torch.save(result, file_path)
         
         if idx >= max_iter:
@@ -126,14 +132,14 @@ nifti_mean_ig_map = nib.Nifti2Image(means_of_maps.mean(axis=3),affine=target_aff
 display = plotting.plot_stat_map(
     nifti_mean_ig_map,
     bg_img=MNI152, # Use the MNI152 template as background for better context
-    threshold=1.5,
+    threshold=1,
     display_mode='ortho', # Typically 'ortho' for 3D brain plots
-    cut_coords=None, # Let nilearn choose optimal cuts, or specify (x,y,z)
-    title=f'ADNI_{config["downstream_task"]}_target{target}'
+    cut_coords=(0,0,0), # Let nilearn choose optimal cuts, or specify (x,y,z)
+    title=f'ADNI_{config["map_task"]}_target{target}'
 )
 
 # Save the generated figure using matplotlib's savefig
 timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
-plt.savefig(f'{save_dir}/ADNI_{config["downstream_task"]}_target{target}_{timestamp}.png', dpi=300) # dpi for higher resolution
-print(f"Saved '{save_dir}/ADNI_{config['downstream_task']}_target{target}_{timestamp}.png'")
+plt.savefig(f'{save_dir}/ADNI_{config["map_task"]}_target{target}_{timestamp}.png', dpi=300) # dpi for higher resolution
+print(f"Saved '{save_dir}/ADNI_{config['map_task']}_target{target}_{timestamp}.png'")
 

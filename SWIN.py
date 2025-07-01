@@ -80,6 +80,21 @@ class ADNISwiFTDataset(Dataset):
             subjects = {id: all_subjects[id] for id in test_ids}
             pickle.dump(subjects, f)
 
+        # num_train_target_0 = len([id for id in train_ids if all_subjects[id][1] == 0])
+        # num_train_target_1 = len([id for id in train_ids if all_subjects[id][1] == 1])
+        # print(f"Number of train subjects with target 0: {num_train_target_0}")
+        # print(f"Number of train subjects with target 1: {num_train_target_1}")
+
+        # num_val_target_0 = len([id for id in val_ids if all_subjects[id][1] == 0])
+        # num_val_target_1 = len([id for id in val_ids if all_subjects[id][1] == 1])
+        # print(f"Number of validation subjects with target 0: {num_val_target_0}")
+        # print(f"Number of validation subjects with target 1: {num_val_target_1}")
+
+        # num_test_target_0 = len([id for id in test_ids if all_subjects[id][1] == 0])
+        # num_test_target_1 = len([id for id in test_ids if all_subjects[id][1] == 1])
+        # print(f"Number of test subjects with target 0: {num_test_target_0}")
+        # print(f"Number of test subjects with target 1: {num_test_target_1}")
+
         # Save subjects to txt files
         with open("data/train.txt", "w") as f:
             for id in train_ids:
