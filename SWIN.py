@@ -11,7 +11,6 @@ import argparse
 import numpy as np
 import pandas as pd
 import nibabel as nib
-from torch.nn import functional as F
 from torch.utils.data import Dataset
 
 from project.module.models.clf_mlp import mlp

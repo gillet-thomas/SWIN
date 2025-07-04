@@ -4,22 +4,22 @@ import torch
 import wandb
 import pickle
 import datetime
+import argparse
 import torch.nn as nn
 from tqdm import tqdm
-import argparse
 
 import numpy as np
 import pandas as pd
 import nibabel as nib
-from torch.nn import functional as F
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.manifold import TSNE
 from torch.utils.data import Dataset
+from torch.nn import functional as F
 
 from project.module.models.clf_mlp import mlp
 from project.module.models.swin4d_transformer_ver7 import SwinTransformer4D
 
-from sklearn.manifold import TSNE
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 class ADNISwiFTDataset(Dataset):
     def __init__(self, config, mode, generate_data=False):
