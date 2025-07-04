@@ -33,7 +33,7 @@ class ADNISwiFTDataset(Dataset):
             self.data = self.get_timepoints(subjects) # subject, target, path_fmri, start_frame_idx
         
         if generate_data:
-            img = nib.load(self.data[0][3]).dataobj[:,:,:,70]
+            img = nib.load(self.data[0][2]).dataobj[:,:,:,70]
             nib.save(nib.Nifti1Image(img, np.eye(4)), f"sample_{self.mode}.nii")
 
         print(f"number of {self.mode} subj: {len(subjects)}")
@@ -43,16 +43,14 @@ class ADNISwiFTDataset(Dataset):
     def split_subjects(self):
         all_subjects = dict()
 
-        meta_df = pd.read_csv(self.config['csv_path'], usecols=['ID', 'Subject', 'Sex', 'Age', 'Path_fMRI_brain'])
+        meta_df = pd.read_csv(self.config['csv_path'], usecols=['ID', 'Subject', 'Group', 'Path_fMRI_brain'])
         
         # Filtering
         print(f"Filtering data for {self.config['downstream_task']} task...")
-        meta_df = meta_df[(meta_df['Age'] < 69) | (meta_df['Age'] > 78)]
-        meta_df["age"] = meta_df["Age"].apply(lambda x: 0 if x < 69 else 1)
-        meta_df["sex"] = meta_df["Sex"].apply(lambda x: 0 if x == 'F' else 1)
+        meta_df = meta_df[(meta_df['Group'] == 'AD') | (meta_df['Group'] == 'CN')]
 
         # Shuffle subjects
-        all_subjects = meta_df.set_index('ID')[['Subject', 'age', 'sex', 'Path_fMRI_brain']].apply(list, axis=1).to_dict()
+        all_subjects = meta_df.set_index('ID')[['Subject', 'Group', 'Path_fMRI_brain']].apply(list, axis=1).to_dict()
         subjects_list = list(all_subjects.keys())
         np.random.shuffle(subjects_list)
 
@@ -77,20 +75,24 @@ class ADNISwiFTDataset(Dataset):
             subjects = {id: all_subjects[id] for id in test_ids}
             pickle.dump(subjects, f)
 
-        # num_train_target_0 = len([id for id in train_ids if all_subjects[id][1] == 0])
-        # num_train_target_1 = len([id for id in train_ids if all_subjects[id][1] == 1])
-        # print(f"Number of train subjects with target 0: {num_train_target_0}")
-        # print(f"Number of train subjects with target 1: {num_train_target_1}")
+        num_train_target_0 = len([id for id in train_ids if all_subjects[id][1] == 'CN'])
+        num_train_target_1 = len([id for id in train_ids if all_subjects[id][1] == 'AD'])
+        print(f"Number of train subjects with target 0: {num_train_target_0}")
+        print(f"Number of train subjects with target 1: {num_train_target_1}")
+        total_samples = num_train_target_0 + num_train_target_1
+        weight_0 = total_samples / (2 * num_train_target_0)
+        weight_1 = total_samples / (2 * num_train_target_1)
+        self.training_class_weights = torch.tensor([weight_0, weight_1], dtype=torch.float32).to(self.config['device'])
 
-        # num_val_target_0 = len([id for id in val_ids if all_subjects[id][1] == 0])
-        # num_val_target_1 = len([id for id in val_ids if all_subjects[id][1] == 1])
-        # print(f"Number of validation subjects with target 0: {num_val_target_0}")
-        # print(f"Number of validation subjects with target 1: {num_val_target_1}")
+        num_val_target_0 = len([id for id in val_ids if all_subjects[id][1] == 'CN'])
+        num_val_target_1 = len([id for id in val_ids if all_subjects[id][1] == 'AD'])
+        print(f"Number of validation subjects with target 0: {num_val_target_0}")
+        print(f"Number of validation subjects with target 1: {num_val_target_1}")
 
-        # num_test_target_0 = len([id for id in test_ids if all_subjects[id][1] == 0])
-        # num_test_target_1 = len([id for id in test_ids if all_subjects[id][1] == 1])
-        # print(f"Number of test subjects with target 0: {num_test_target_0}")
-        # print(f"Number of test subjects with target 1: {num_test_target_1}")
+        num_test_target_0 = len([id for id in test_ids if all_subjects[id][1] == 'CN'])
+        num_test_target_1 = len([id for id in test_ids if all_subjects[id][1] == 'AD'])
+        print(f"Number of test subjects with target 0: {num_test_target_0}")
+        print(f"Number of test subjects with target 1: {num_test_target_1}")
 
         # Save subjects to txt files
         with open("data/train.txt", "w") as f:
@@ -109,11 +111,10 @@ class ADNISwiFTDataset(Dataset):
         data = []
 
         starting_timepoints = np.arange(0, 140, self.config['sequence_length'])
-        for _, (subject_name, age, sex, path_fmri) in subjects.items():
+        for _, (subject_name, group, path_fmri) in subjects.items():
             for start_frame_idx in starting_timepoints:
-                data.append((subject_name, age, sex, path_fmri, start_frame_idx))
+                data.append((subject_name, group, path_fmri, start_frame_idx)) # add start_frame_idx column
 
-        # (subj_id, current_sequence_frame_paths, sequence_label, start_frame_idx, num_frames_for_subject)
         return data
 
     def pad_4d(self, fmri_data):
@@ -132,20 +133,10 @@ class ADNISwiFTDataset(Dataset):
     
     def __getitem__(self, index):
         # Unpack the data tuple for one sequence
-        subject_name, age, sex, path_fmri, start_frame_idx = self.data[index]
+        subject_name, group, path_fmri, start_frame_idx = self.data[index]
 
-        if age == 0 and sex == 0: # young female
-            target = 0
-        elif age == 0 and sex == 1: # young male
-            target = 1
-        elif age == 1 and sex == 0: # old female
-            target = 2
-        elif age == 1 and sex == 1: # old male
-            target = 3
+        target = 0 if group == 'AD' else 1
 
-        # one_hot_target = torch.zeros(4)
-        # one_hot_target[target.long()] = 1
-        
         fmri_img = nib.load(path_fmri)
         fmri_data = fmri_img.dataobj[:, :, :, start_frame_idx : start_frame_idx + 20]
         fmri_data = self.pad_4d(fmri_data)  # Pad to 120x120x120x20
@@ -176,11 +167,11 @@ class Model(nn.Module):
             attn_drop_rate=config['dropout']
         )
         num_tokens = config['embed_dim'] * (config['c_multiplier'] ** (config['n_stages'] - 1))
-        self.output_head = mlp(num_classes=4, num_tokens = num_tokens)
+        self.output_head = mlp(num_classes=config['num_classes'], num_tokens = num_tokens)
 
     def forward(self, x):
         x = self.model(x)           # input ([8, 1, 112, 112, 112, 20]) -> ([8, 288, 2, 2, 2, 20])
-        x = self.output_head(x)     # ([8, 288, 2, 2, 2, 20]) -> ([8, 1])   
+        x = self.output_head(x)     # ([8, 288, 2, 2, 2, 20]) -> ([8, 1])  
         return x
 
     def get_embeddings(self, x):
@@ -203,7 +194,7 @@ class Trainer():
         self.val_dataloader = torch.utils.data.DataLoader(self.val_data, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, pin_memory=True, prefetch_factor=2)
 
         self.scaler = torch.amp.GradScaler()       # for Automatic Mixed Precision
-        self.criterion = nn.CrossEntropyLoss()
+        self.criterion = nn.BCEWithLogitsLoss()
         self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.config['learning_rate'], weight_decay=self.config['weight_decay'])
         self.log_interval = len(self.dataloader) // 10  # Log every 10% of batches
 
@@ -232,12 +223,12 @@ class Trainer():
         running_loss, correct, total = 0.0, 0, 0
 
         for i, (fmri_sequence, target) in enumerate(self.dataloader):
-            fmri_sequence = fmri_sequence.float()
-            target = target.long()
-            fmri_sequence, target = fmri_sequence.to(self.device), target.to(self.device)  ## (batch_size, 64, 64, 48, 140) and (batch_size)
+            fmri_sequence, target = fmri_sequence.to(self.device), target.to(self.device)
+            fmri_sequence, target = fmri_sequence.float(), target.float() 
+
             with torch.autocast(device_type="cuda", dtype=torch.float16):
                 outputs = self.model(fmri_sequence)
-                # outputs = outputs.view(-1)
+                outputs = outputs.view(-1) # for BCEWithLogitsLoss
                 loss = self.criterion(outputs, target)
             
             self.optimizer.zero_grad(set_to_none=True) # Modestly improve performance
@@ -247,8 +238,8 @@ class Trainer():
 
             running_loss += loss.item()
 
-            # predicted_labels = (torch.sigmoid(outputs) >= 0.5).long()
-            predicted_labels = torch.argmax(outputs, dim=1)
+            predicted_labels = (torch.sigmoid(outputs) >= 0.5).long() # BCEWithLogitsLoss
+            # predicted_labels = torch.argmax(outputs, dim=1) # CrossEntropyLoss
             correct += (predicted_labels == target).sum().item()
             total += target.size(0)  # returns the batch size
 
@@ -266,16 +257,15 @@ class Trainer():
 
         with torch.no_grad():
             for i, (fmri_sequence, target) in enumerate(self.val_dataloader):
-                fmri_sequence = fmri_sequence.float()
-                target = target.long()
-                fmri_sequence, target = fmri_sequence.to(self.device), target.to(self.device)  ## (batch_size, 64, 64, 48, 140) and (batch_size)
+                fmri_sequence, target = fmri_sequence.to(self.device), target.to(self.device) 
+                fmri_sequence, target = fmri_sequence.float(), target.float()  
+                
                 outputs = self.model(fmri_sequence)
-                # outputs = outputs.view(-1)
-
+                outputs = outputs.view(-1) # for BCEWithLogitsLoss
                 loss = self.criterion(outputs, target)
                 val_loss += loss.item()
                 
-                predicted_labels = torch.argmax(outputs, dim=1)
+                predicted_labels = (torch.sigmoid(outputs) >= 0.5).long()
                 correct += (predicted_labels == target).sum().item()
                 total += target.size(0)  # returns the batch size
                 

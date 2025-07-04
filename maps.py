@@ -32,10 +32,10 @@ def plot_embeddings(model, dataloader, config, mode):
 
     print(f"Performing {method} dimensionality reduction...")
     if method == 'tsne':
-        param = 30 # 30 or 50
+        param = 50 # 30 or 50
         reducer = TSNE(n_components=2, random_state=42, perplexity=param, n_iter=1000)
     elif method == 'umap':
-        param = 100 # 50 or 100
+        param = 50 # 50 or 100
         reducer = umap.UMAP(n_components=2, random_state=42, n_neighbors=param, min_dist=0.1)
 
     embedding_results = reducer.fit_transform(all_embeddings)
@@ -43,11 +43,7 @@ def plot_embeddings(model, dataloader, config, mode):
     # Plotting
     plt.figure(figsize=(10, 8))
     
-    label_names = {0: 'Category 0', 1: 'Category 1'}
-    if config['map_task'] == 'sex':
-        label_names = {0: 'Female', 1: 'Male'}
-    elif config['map_task'] == 'age_group':
-        label_names = {0: 'Young', 1: 'Old'}
+    label_names = {0: 'AD', 1: 'CN'}
 
     df_tsne = pd.DataFrame(embedding_results, columns=[f'{method} Dimension 1', f'{method} Dimension 2'])
     df_tsne['Label_Name'] = [label_names[int(label)] for label in all_labels]
@@ -85,7 +81,7 @@ def get_file_name(method, mode, param=None):
 # Load model
 cuda_id = 2
 config = yaml.safe_load(open("data/config.yaml", "r"))
-best_model_path = config[f'best_model_{config["map_task"]}']
+best_model_path = config[f'best_swin_{config["map_task"]}']
 model = Model(config).to(device=f"cuda:{cuda_id}")
 model.load_state_dict(torch.load(best_model_path))
 model.eval()
