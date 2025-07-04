@@ -14,7 +14,6 @@ import nibabel as nib
 from torch.nn import functional as F
 from torch.utils.data import Dataset
 
-from data.SWIN_marta import TestDataset, train_df, test_df
 from project.module.models.clf_mlp import mlp
 from project.module.models.swin4d_transformer_ver7 import SwinTransformer4D
 
@@ -34,7 +33,7 @@ class ADNISwiFTDataset(Dataset):
             self.data = self.get_timepoints(subjects) # subject, target, path_fmri, start_frame_idx
         
         if generate_data:
-            img = nib.load(self.data[0][2]).dataobj[:,:,:,70]
+            img = nib.load(self.data[0][3]).dataobj[:,:,:,70]
             nib.save(nib.Nifti1Image(img, np.eye(4)), f"sample_{self.mode}.nii")
 
         print(f"number of {self.mode} subj: {len(subjects)}")
@@ -48,14 +47,12 @@ class ADNISwiFTDataset(Dataset):
         
         # Filtering
         print(f"Filtering data for {self.config['downstream_task']} task...")
-        if self.config['downstream_task'] == 'age_group':
-            meta_df = meta_df[(meta_df['Age'] < 69) | (meta_df['Age'] > 78)]
-            meta_df["target"] = meta_df["Age"].apply(lambda x: 0 if x < 69 else 1)
-        elif self.config['downstream_task'] == 'sex':
-            meta_df["target"] = meta_df["Sex"].apply(lambda x: 0 if x == 'F' else 1)
+        meta_df = meta_df[(meta_df['Age'] < 69) | (meta_df['Age'] > 78)]
+        meta_df["age"] = meta_df["Age"].apply(lambda x: 0 if x < 69 else 1)
+        meta_df["sex"] = meta_df["Sex"].apply(lambda x: 0 if x == 'F' else 1)
 
         # Shuffle subjects
-        all_subjects = meta_df.set_index('ID')[['Subject', 'target', 'Path_fMRI_brain']].apply(list, axis=1).to_dict()
+        all_subjects = meta_df.set_index('ID')[['Subject', 'age', 'sex', 'Path_fMRI_brain']].apply(list, axis=1).to_dict()
         subjects_list = list(all_subjects.keys())
         np.random.shuffle(subjects_list)
 
@@ -112,9 +109,9 @@ class ADNISwiFTDataset(Dataset):
         data = []
 
         starting_timepoints = np.arange(0, 140, self.config['sequence_length'])
-        for _, (subject_name, target, path_fmri) in subjects.items():
+        for _, (subject_name, age, sex, path_fmri) in subjects.items():
             for start_frame_idx in starting_timepoints:
-                data.append((subject_name, target, path_fmri, start_frame_idx))
+                data.append((subject_name, age, sex, path_fmri, start_frame_idx))
 
         # (subj_id, current_sequence_frame_paths, sequence_label, start_frame_idx, num_frames_for_subject)
         return data
@@ -135,9 +132,20 @@ class ADNISwiFTDataset(Dataset):
     
     def __getitem__(self, index):
         # Unpack the data tuple for one sequence
-        subject_name, target, path_fmri, start_frame_idx = self.data[index]
-        target = torch.tensor(target).float() # For classification, labels should be float
+        subject_name, age, sex, path_fmri, start_frame_idx = self.data[index]
 
+        if age == 0 and sex == 0: # young female
+            target = 0
+        elif age == 0 and sex == 1: # young male
+            target = 1
+        elif age == 1 and sex == 0: # old female
+            target = 2
+        elif age == 1 and sex == 1: # old male
+            target = 3
+
+        # one_hot_target = torch.zeros(4)
+        # one_hot_target[target.long()] = 1
+        
         fmri_img = nib.load(path_fmri)
         fmri_data = fmri_img.dataobj[:, :, :, start_frame_idx : start_frame_idx + 20]
         fmri_data = self.pad_4d(fmri_data)  # Pad to 120x120x120x20
@@ -146,7 +154,7 @@ class ADNISwiFTDataset(Dataset):
         fmri_data = fmri_data.unsqueeze(0)  # Add channel dimension, now shape is (1, 120, 120, 120, 20)
         # print("Min max and mean of fmri_data:", fmri_data.min(), fmri_data.max(), fmri_data.mean())
         
-        return fmri_data, target
+        return fmri_data, torch.tensor(target)
     
     def __len__(self):
         return len(self.data)
@@ -168,7 +176,7 @@ class Model(nn.Module):
             attn_drop_rate=config['dropout']
         )
         num_tokens = config['embed_dim'] * (config['c_multiplier'] ** (config['n_stages'] - 1))
-        self.output_head = mlp(num_classes=2, num_tokens = num_tokens)
+        self.output_head = mlp(num_classes=4, num_tokens = num_tokens)
 
     def forward(self, x):
         x = self.model(x)           # input ([8, 1, 112, 112, 112, 20]) -> ([8, 288, 2, 2, 2, 20])
@@ -195,7 +203,7 @@ class Trainer():
         self.val_dataloader = torch.utils.data.DataLoader(self.val_data, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, pin_memory=True, prefetch_factor=2)
 
         self.scaler = torch.amp.GradScaler()       # for Automatic Mixed Precision
-        self.criterion = nn.BCEWithLogitsLoss()
+        self.criterion = nn.CrossEntropyLoss()
         self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.config['learning_rate'], weight_decay=self.config['weight_decay'])
         self.log_interval = len(self.dataloader) // 10  # Log every 10% of batches
 
@@ -225,11 +233,11 @@ class Trainer():
 
         for i, (fmri_sequence, target) in enumerate(self.dataloader):
             fmri_sequence = fmri_sequence.float()
-            target = target.float()
+            target = target.long()
             fmri_sequence, target = fmri_sequence.to(self.device), target.to(self.device)  ## (batch_size, 64, 64, 48, 140) and (batch_size)
             with torch.autocast(device_type="cuda", dtype=torch.float16):
                 outputs = self.model(fmri_sequence)
-                outputs = outputs.view(-1)
+                # outputs = outputs.view(-1)
                 loss = self.criterion(outputs, target)
             
             self.optimizer.zero_grad(set_to_none=True) # Modestly improve performance
@@ -239,7 +247,8 @@ class Trainer():
 
             running_loss += loss.item()
 
-            predicted_labels = (torch.sigmoid(outputs) >= 0.5).long()
+            # predicted_labels = (torch.sigmoid(outputs) >= 0.5).long()
+            predicted_labels = torch.argmax(outputs, dim=1)
             correct += (predicted_labels == target).sum().item()
             total += target.size(0)  # returns the batch size
 
@@ -258,15 +267,15 @@ class Trainer():
         with torch.no_grad():
             for i, (fmri_sequence, target) in enumerate(self.val_dataloader):
                 fmri_sequence = fmri_sequence.float()
-                target = target.float()
+                target = target.long()
                 fmri_sequence, target = fmri_sequence.to(self.device), target.to(self.device)  ## (batch_size, 64, 64, 48, 140) and (batch_size)
                 outputs = self.model(fmri_sequence)
-                outputs = outputs.view(-1)
+                # outputs = outputs.view(-1)
 
                 loss = self.criterion(outputs, target)
                 val_loss += loss.item()
                 
-                predicted_labels = (torch.sigmoid(outputs) >= 0.5).long()
+                predicted_labels = torch.argmax(outputs, dim=1)
                 correct += (predicted_labels == target).sum().item()
                 total += target.size(0)  # returns the batch size
                 
@@ -314,8 +323,5 @@ if __name__ == "__main__":
     dataset_train = ADNISwiFTDataset(config, "train", generate_data=True)
     dataset_val = ADNISwiFTDataset(config, "val", generate_data=False)
 
-    # dataset_train = TestDataset(train_df, 'minmax')
-    # dataset_val = TestDataset(test_df, 'minmax')
-    
     trainer = Trainer(config, model, dataset_train, dataset_val)
     trainer.run()
