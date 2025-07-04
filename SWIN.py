@@ -296,6 +296,9 @@ if __name__ == "__main__":
     args = parse_args()
     config = yaml.safe_load(open("data/config.yaml", "r"))
 
+    torch.manual_seed(config["seed"])
+    np.random.seed(config["seed"])
+    
     config['device'] = args.cuda
     config["wandb_mode"] = "online" if args.wandb else "disabled"
     config['downstream_task'] = args.task # Update config with task from args

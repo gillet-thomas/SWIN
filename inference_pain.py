@@ -107,10 +107,14 @@ class PainDataset(Dataset):
     def __len__(self):
         return len(self.data)
 
+# Set random seed
+config = yaml.safe_load(open("data/config.yaml", "r"))
+torch.manual_seed(config["seed"])
+np.random.seed(config["seed"])
+
 # Load model
 cuda_id = 2
-config = yaml.safe_load(open("data/config.yaml", "r"))
-best_model_path = config[f'best_model_{config["map_task"]}']
+best_model_path = config[f'best_swin_{config["map_task"]}']
 model = Model(config).to(device=f"cuda:{cuda_id}")
 model.load_state_dict(torch.load(best_model_path))
 model.eval()

@@ -78,25 +78,29 @@ def get_file_name(method, mode, param=None):
     else:
         return f'{method}_{config["map_task"]}_{mode}_{param}.png' # param is perplexity or neighbors
 
+if __name__ == "__main__":
+    # Set random seed
+    config = yaml.safe_load(open("data/config.yaml", "r"))
+    torch.manual_seed(config["seed"])
+    np.random.seed(config["seed"])
 
-# Load model
-cuda_id = 2
-config = yaml.safe_load(open("data/config.yaml", "r"))
-best_model_path = config[f'best_swin_{config["map_task"]}']
-model = Model(config).to(device=f"cuda:{cuda_id}")
-model.load_state_dict(torch.load(best_model_path))
-model.eval()
-print(f"Using model from {best_model_path}")
+    # Load model
+    cuda_id = 2
+    best_model_path = config[f'best_swin_{config["map_task"]}']
+    model = Model(config).to(device=f"cuda:{cuda_id}")
+    model.load_state_dict(torch.load(best_model_path))
+    model.eval()
+    print(f"Using model from {best_model_path}")
 
-# Run t-SNE on validation, training and test datasets
-data_val = ADNISwiFTDataset(config, mode='val')
-val_loader = torch.utils.data.DataLoader(data_val, batch_size=config['eval_batch_size'], shuffle=False, num_workers=config['num_workers'], pin_memory=True, prefetch_factor=2)
-plot_embeddings(model, val_loader, config, "val")
+    # Run t-SNE on validation, training and test datasets
+    data_val = ADNISwiFTDataset(config, mode='val')
+    val_loader = torch.utils.data.DataLoader(data_val, batch_size=config['eval_batch_size'], shuffle=False, num_workers=config['num_workers'], pin_memory=True, prefetch_factor=2)
+    plot_embeddings(model, val_loader, config, "val")
 
-data_train = ADNISwiFTDataset(config, mode='train')
-train_loader = torch.utils.data.DataLoader(data_train, batch_size=config['eval_batch_size'], shuffle=False, num_workers=config['num_workers'], pin_memory=True, prefetch_factor=2)
-plot_embeddings(model, train_loader, config, "train")
+    data_train = ADNISwiFTDataset(config, mode='train')
+    train_loader = torch.utils.data.DataLoader(data_train, batch_size=config['eval_batch_size'], shuffle=False, num_workers=config['num_workers'], pin_memory=True, prefetch_factor=2)
+    plot_embeddings(model, train_loader, config, "train")
 
-data_test = ADNISwiFTDataset(config, mode='test')
-test_loader = torch.utils.data.DataLoader(data_test, batch_size=config['eval_batch_size'], shuffle=False, num_workers=config['num_workers'], pin_memory=True, prefetch_factor=2)
-plot_embeddings(model, test_loader, config, "test")
+    data_test = ADNISwiFTDataset(config, mode='test')
+    test_loader = torch.utils.data.DataLoader(data_test, batch_size=config['eval_batch_size'], shuffle=False, num_workers=config['num_workers'], pin_memory=True, prefetch_factor=2)
+    plot_embeddings(model, test_loader, config, "test")
