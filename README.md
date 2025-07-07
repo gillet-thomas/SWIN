@@ -8,9 +8,7 @@
 
 📌 **Introduction**
 
-This project presents a custom implementation of [SwiFT (Swin 4D fMRI Transformer)](https://github.com/Transconnectome/SwiFT), a scalable analysis model for fMRI. SwiFT, based on the Swin Transformer, is designed to effectively predict various biological and cognitive variables from fMRI scans. This iteration of the project focuses on providing a lightweight and flexible framework for fMRI analysis, moving away from PyTorch Lightning to a streamlined PyTorch-only implementation.
-
-We have significantly refactored the original codebase to offer a more direct and intuitive training experience with a custom training loop and a lighter file code architecture. This allows for greater control and easier integration into diverse research workflows.
+This project is a custom implementation of [SwiFT (Swin 4D fMRI Transformer)](https://github.com/Transconnectome/SwiFT), a 4D model for fMRI analysis. This model, based on the Swin Transformer, is designed to effectively predict various biological and cognitive variables from fMRI scans. This implementation of the project focuses on providing an easy-to-use and flexible framework for fMRI analysis, removing dependencies of PyTorch Lightning and offering a lighter PyTorch-only implementation.
 
 You can find the original research paper on SwiFT [here](https://arxiv.org/abs/2307.05916). Feel free to contact the authors regarding the original project.
 
@@ -31,9 +29,9 @@ This custom implementation of SwiFT offers the following:
 
 ---
 
-## 🧠 Experiments and Results
+## Experiments and Results
 
-This repository includes implementations and evaluations of SwiFT on the ADNI dataset, preprocessed and aligned to MNI space. Various classification tasks were conducted:
+This SwiFT model was tested on the ADNI dataset, preprocessed and aligned to MNI space. Various classification tasks were conducted to evaluate the model's performance.
 
 1.  **Age Group Prediction:**
     * **Task:** Classifying individuals into "young" (< 69 years old) and "old" (> 78 years old) age groups.
@@ -59,7 +57,12 @@ This repository includes implementations and evaluations of SwiFT on the ADNI da
 
 ## 💻 Getting Started
 
-To use the Swin 4D model, run the following command:
+To run the code, please check the implementation of the ADNISwiFTDataset class in the SWIN.py file.
+The dataset expects a CSV file with the following columns: `ID`, `subject`, `fMRI_path`, `targets`.
+Please create such a file first, then run the script with the `generate_data` config option set to `True`.
+
+
+Once the data preprocessing is done, you can train the model using the following command:
 
 ```bash
 # You can choose between SWIN.py (default) or SWIN_CLIP.py (CLIP version)
