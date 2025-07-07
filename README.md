@@ -258,7 +258,3 @@ These plots show the projection of the fMRI features learned by the Swin 4D mode
 <!-- Integrated Gradients visualization showing key fMRI regions influencing the model’s AD prediction.
 ![IG AD](/visualization/swin_2targets_AD/ADNI_AD_target0_min.png)
 *Integrated Gradients visualization showing key fMRI regions influencing the model’s AD prediction.* -->
-
-
-
-**Placeholder for t-SNE Visualization:**
