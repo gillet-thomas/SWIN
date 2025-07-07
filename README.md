@@ -2,11 +2,12 @@
  
 # SwiFT: Swin 4D fMRI Transformer
 
-<a href="https://www.python.org/"><img alt="Python" src="https://img.shields.io/badge/-Python 3.9+-blue?style=for-the-badge&logo=python&logoColor=white"></a>
-<a href="https://pytorch.org/get-started/locally/"><img alt="PyTorch" src="https://img.shields.io/badge/-PyTorch 1.12+-ee4c2c?style=for-the-badge&logo=pytorch&logoColor=white"></a>
+<a href="https://www.python.org/"><img alt="Python" src="https://img.shields.io/badge/-Python 3.12+
+-blue?style=for-the-badge&logo=python&logoColor=white"></a>
+<a href="https://pytorch.org/get-started/locally/"><img alt="PyTorch" src="https://img.shields.io/badge/-PyTorch 2.6+-ee4c2c?style=for-the-badge&logo=pytorch&logoColor=white"></a>
 </div>
 
-📌 **Introduction**
+## 📌 Introduction
 
 This project is a custom implementation of [SwiFT (Swin 4D fMRI Transformer)](https://github.com/Transconnectome/SwiFT), a 4D model for fMRI analysis. This model, based on the Swin Transformer, is designed to effectively predict various biological and cognitive variables from fMRI scans. This implementation of the project focuses on providing an easy-to-use and flexible framework for fMRI analysis, removing dependencies of PyTorch Lightning and offering a lighter PyTorch-only implementation.
 
