@@ -4,22 +4,22 @@ import torch
 import wandb
 import pickle
 import datetime
+import argparse
 import torch.nn as nn
 from tqdm import tqdm
-import argparse
 
 import numpy as np
 import pandas as pd
 import nibabel as nib
-from torch.nn import functional as F
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.manifold import TSNE
 from torch.utils.data import Dataset
+from torch.nn import functional as F
 
 from project.module.models.clf_mlp import mlp
 from project.module.models.swin4d_transformer_ver7 import SwinTransformer4D
 
-from sklearn.manifold import TSNE
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 class ADNISwiFTDataset(Dataset):
     def __init__(self, config, mode, generate_data=False):
@@ -192,7 +192,7 @@ class CLIP(nn.Module):
         self.text_projection = ProjectionHead(config, embedding_dim=self.text_embedding).to(self.device)
 
         # Load weights and rename keys
-        image_encoder_state_dict = torch.load(config['best_model_age_group'])
+        image_encoder_state_dict = torch.load(config['best_swin_age_group'])
         new_image_encoder_state_dict = {
             k: v for k, v in image_encoder_state_dict.items() if k.startswith('model.')
         }
@@ -390,7 +390,7 @@ def parse_args():
     )
     return parser.parse_args()
 
-def visualize_tsne_with_sex_age_groups(model, dataloader, config):
+def CLIP_tsne_visualization_4targets(model, dataloader, config):
     model.eval() # Set model to evaluation mode
     device = config['device']
 
@@ -500,9 +500,9 @@ if __name__ == "__main__":
     dataset_val = ADNISwiFTDataset(config, "val", generate_data=False)
     dataset_test = ADNISwiFTDataset(config, "test", generate_data=False)
     trainer = Trainer(config, model, dataset_train, dataset_val)
-    # trainer.run()
+    trainer.run()
 
-    model.load_state_dict(torch.load(config['CLIP_model_path']))
-    tsne_dataloader = torch.utils.data.DataLoader(dataset_test, batch_size=config['batch_size'], shuffle=False, num_workers=config['num_workers'], pin_memory=True, prefetch_factor=2)
-    trainer.evaluate_classification_accuracy(tsne_dataloader) # Train = 98.52, Val = 97.46, Testing = 97.87 | Train = 92.25, Val = 91.43, Testing = 
-    # visualize_tsne_with_sex_age_groups(model, tsne_dataloader, config) 
+    # model.load_state_dict(torch.load(config['CLIP_model_path']))
+    # tsne_dataloader = torch.utils.data.DataLoader(dataset_test, batch_size=config['batch_size'], shuffle=False, num_workers=config['num_workers'], pin_memory=True, prefetch_factor=2)
+    # trainer.evaluate_classification_accuracy(tsne_dataloader) # Train = 98.52, Val = 97.46, Testing = 97.87 | Train = 92.25, Val = 91.43, Testing = 
+    # CLIP_tsne_visualization_4targets(model, tsne_dataloader, config) 
