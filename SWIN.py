@@ -13,8 +13,8 @@ import pandas as pd
 import nibabel as nib
 from torch.utils.data import Dataset
 
-from project.module.models.clf_mlp import mlp
-from project.module.models.swin4d_transformer_ver7 import SwinTransformer4D
+from models.clf_mlp import mlp
+from models.swin4d_transformer_ver7 import SwinTransformer4D
 
 
 class ADNISwiFTDataset(Dataset):
