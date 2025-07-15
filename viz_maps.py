@@ -11,10 +11,12 @@ import yaml
 from sklearn.manifold import TSNE
 from tqdm import tqdm
 
-from SWIN import ADNISwiFTDataset, Model
+from src.data.DatasetADNI import ADNISwiFTDataset
+from src.data.DatasetPain import PainDataset
+from src.models.SWIN4D import SWIN4D
 
 
-# New function for t-SNE plotting
+# Generate tsne/umap plot and save it 
 def plot_embeddings(model, dataloader, config, mode):
     all_embeddings = []
     all_labels = []
@@ -24,17 +26,13 @@ def plot_embeddings(model, dataloader, config, mode):
     with torch.no_grad():
         for i, (fmri_sequence, target) in enumerate(tqdm(dataloader)):
             fmri_sequence = fmri_sequence.float().to(device=f"cuda:{cuda_id}")
-            embeddings = model.get_embeddings(
-                fmri_sequence
-            )  # t-sne expects flattened embeddings (2D)
+            embeddings = model.get_embeddings(fmri_sequence)  # t-sne expects flattened embeddings (2D)
             all_embeddings.append(embeddings.cpu().numpy())
             all_labels.append(target.cpu().numpy())
 
     all_embeddings = np.concatenate(all_embeddings, axis=0)
     all_labels = np.concatenate(all_labels, axis=0)
-    print(
-        f"Collected {len(all_embeddings)} embeddings of shape {all_embeddings.shape[1]}"
-    )
+    print(f"Collected {len(all_embeddings)} embeddings of shape {all_embeddings.shape[1]}")
 
     print(f"Performing {method} dimensionality reduction...")
     if method == "tsne":
@@ -42,9 +40,7 @@ def plot_embeddings(model, dataloader, config, mode):
         reducer = TSNE(n_components=2, random_state=42, perplexity=param, n_iter=1000)
     elif method == "umap":
         param = 50  # 50 or 100
-        reducer = umap.UMAP(
-            n_components=2, random_state=42, n_neighbors=param, min_dist=0.1
-        )
+        reducer = umap.UMAP(n_components=2, random_state=42, n_neighbors=param, min_dist=0.1)
 
     embedding_results = reducer.fit_transform(all_embeddings)
 
@@ -54,9 +50,7 @@ def plot_embeddings(model, dataloader, config, mode):
     label_names = {0: "AD", 1: "CN"}
     # label_names = {0: 'Young Female', 1: 'Young Male', 2: 'Old Female', 3: 'Old Male'}
 
-    df_tsne = pd.DataFrame(
-        embedding_results, columns=[f"{method} Dimension 1", f"{method} Dimension 2"]
-    )
+    df_tsne = pd.DataFrame(embedding_results, columns=[f"{method} Dimension 1", f"{method} Dimension 2"])
     df_tsne["Label_Name"] = [label_names[int(label)] for label in all_labels]
 
     sns.scatterplot(
@@ -82,7 +76,7 @@ def plot_embeddings(model, dataloader, config, mode):
     plt.savefig(embedding_plot_path, dpi=300)
     print(f"{method.upper()} plot saved to {embedding_plot_path}")
 
-
+# Generate file name based on task
 def get_file_name(method, mode, param=None):
     if param is None:
         return f'{method}_{config["map_task"]}_{mode}_{datetime.datetime.now().strftime("%Y%m%d-%H%M%S")}.png'
@@ -99,7 +93,7 @@ if __name__ == "__main__":
     # Load model
     cuda_id = 0
     best_model_path = config[f'best_swin_{config["map_task"]}']
-    model = Model(config).to(device=f"cuda:{cuda_id}")
+    model = SWIN4D(config).to(device=f"cuda:{cuda_id}")
     model.load_state_dict(torch.load(best_model_path))
     model.eval()
     print(f"Using model from {best_model_path}")

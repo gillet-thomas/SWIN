@@ -16,15 +16,18 @@ best_swin_AD:  /mnt/data/iai/Projects/ABCDE/fmris/CLIP_fmris/SwiFT/results/2025-
 best_swin_4targets: /mnt/data/iai/Projects/ABCDE/fmris/CLIP_fmris/SwiFT/results/2025-07-03_17-33-53/model-e14.pth
 best_CLIP:  /mnt/data/iai/Projects/ABCDE/fmris/CLIP_fmris/SwiFT/results/2025-07-02_15-44-05/model-e26.pth
 
+best_swin_pain_age: /mnt/data/iai/Projects/ABCDE/fmris/CLIP_fmris/SwiFT/results/2025-07-14_17-17-15/model-e57.pth
+best_swin_pain_sex: /mnt/data/iai/Projects/ABCDE/fmris/CLIP_fmris/SwiFT/results/2025-07-15_10-42-35/model-e21.pth
+
 #! TRAINING
 seed: 42
-num_workers: 16
+num_workers: 4
 
 epochs: 75
 batch_size: 8
 eval_batch_size: 1
 learning_rate: 0.00001
-dropout: 0.5
+dropout: 0.8
 weight_decay: 0.03
 
 #! SWIN (swin4d_ver7) config
@@ -47,5 +50,5 @@ image_embedding: 46080
 projection_dim: 256
 
 #! Visualization
-map_task: age_group # for maps and gradients
-map_method: umap # for viz_maps
+map_task: AD # for maps and gradients
+map_method: tsne # for viz_maps

@@ -45,7 +45,7 @@ if __name__ == "__main__":
     )
 
     model = SWIN4D(config).to(device)
-    dataset_train = ADNISwiFTDataset(config, "train", generate_data=True)
+    dataset_train = ADNISwiFTDataset(config, "train", generate_data=config["generate_data"])
     dataset_val = ADNISwiFTDataset(config, "val", generate_data=False)
 
     trainer = Trainer(config, model, dataset_train, dataset_val)
