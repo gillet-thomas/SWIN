@@ -5,23 +5,20 @@
 # Written by Ze Liu
 # --------------------------------------------------------
 
-import torch
-import torch.nn as nn
-import torch.utils.checkpoint as checkpoint
-
-import torch
 import math
 import warnings
 
+import torch
+import torch.nn as nn
+import torch.utils.checkpoint as checkpoint
 from torch.nn.init import _calculate_fan_in_and_fan_out
-
 
 """ Layer/Module Helpers
 
 Hacked together by / Copyright 2020 Ross Wightman
 """
-from itertools import repeat
 import collections.abc
+from itertools import repeat
 
 
 # From PyTorch internals
@@ -200,7 +197,7 @@ def drop_block_2d(
     inplace: bool = False,
     batchwise: bool = False,
 ):
-    """ DropBlock. See https://arxiv.org/pdf/1810.12890.pdf
+    """DropBlock. See https://arxiv.org/pdf/1810.12890.pdf
 
     DropBlock with an experimental gaussian noise option. This layer has been tested on a few training
     runs with success, but needs further validation and possibly optimization for lower runtime impact.
@@ -210,7 +207,7 @@ def drop_block_2d(
     clipped_block_size = min(block_size, min(W, H))
     # seed_drop_rate, the gamma parameter
     gamma = (
-        gamma_scale * drop_prob * total_size / clipped_block_size ** 2 / ((W - block_size + 1) * (H - block_size + 1))
+        gamma_scale * drop_prob * total_size / clipped_block_size**2 / ((W - block_size + 1) * (H - block_size + 1))
     )
 
     # Forces the block to be inside the feature map.
@@ -227,7 +224,10 @@ def drop_block_2d(
         uniform_noise = torch.rand_like(x)
     block_mask = ((2 - gamma - valid_block + uniform_noise) >= 1).to(dtype=x.dtype)
     block_mask = -F.max_pool2d(
-        -block_mask, kernel_size=clipped_block_size, stride=1, padding=clipped_block_size // 2  # block_size,
+        -block_mask,
+        kernel_size=clipped_block_size,
+        stride=1,
+        padding=clipped_block_size // 2,  # block_size,
     )
 
     if with_noise:
@@ -253,7 +253,7 @@ def drop_block_fast_2d(
     with_noise: bool = False,
     inplace: bool = False,
 ):
-    """ DropBlock. See https://arxiv.org/pdf/1810.12890.pdf
+    """DropBlock. See https://arxiv.org/pdf/1810.12890.pdf
 
     DropBlock with an experimental gaussian noise option. Simplied from above without concern for valid
     block mask at edges.
@@ -262,12 +262,15 @@ def drop_block_fast_2d(
     total_size = W * H
     clipped_block_size = min(block_size, min(W, H))
     gamma = (
-        gamma_scale * drop_prob * total_size / clipped_block_size ** 2 / ((W - block_size + 1) * (H - block_size + 1))
+        gamma_scale * drop_prob * total_size / clipped_block_size**2 / ((W - block_size + 1) * (H - block_size + 1))
     )
 
     block_mask = torch.empty_like(x).bernoulli_(gamma)
     block_mask = F.max_pool2d(
-        block_mask.to(x.dtype), kernel_size=clipped_block_size, stride=1, padding=clipped_block_size // 2
+        block_mask.to(x.dtype),
+        kernel_size=clipped_block_size,
+        stride=1,
+        padding=clipped_block_size // 2,
     )
 
     if with_noise:
@@ -287,8 +290,7 @@ def drop_block_fast_2d(
 
 
 class DropBlock2d(nn.Module):
-    """ DropBlock. See https://arxiv.org/pdf/1810.12890.pdf
-    """
+    """DropBlock. See https://arxiv.org/pdf/1810.12890.pdf"""
 
     def __init__(
         self,
@@ -314,11 +316,22 @@ class DropBlock2d(nn.Module):
             return x
         if self.fast:
             return drop_block_fast_2d(
-                x, self.drop_prob, self.block_size, self.gamma_scale, self.with_noise, self.inplace
+                x,
+                self.drop_prob,
+                self.block_size,
+                self.gamma_scale,
+                self.with_noise,
+                self.inplace,
             )
         else:
             return drop_block_2d(
-                x, self.drop_prob, self.block_size, self.gamma_scale, self.with_noise, self.inplace, self.batchwise
+                x,
+                self.drop_prob,
+                self.block_size,
+                self.gamma_scale,
+                self.with_noise,
+                self.inplace,
+                self.batchwise,
             )
 
 
@@ -343,8 +356,7 @@ def drop_path(x, drop_prob: float = 0.0, training: bool = False, scale_by_keep: 
 
 
 class DropPath(nn.Module):
-    """Drop paths (Stochastic Depth) per sample  (when applied in main path of residual blocks).
-    """
+    """Drop paths (Stochastic Depth) per sample  (when applied in main path of residual blocks)."""
 
     def __init__(self, drop_prob: float = 0.0, scale_by_keep: bool = True):
         super(DropPath, self).__init__()
@@ -358,14 +370,20 @@ class DropPath(nn.Module):
         return f"drop_prob={round(self.drop_prob,3):0.3f}"
 
 
-
 WindowProcess = None
 WindowProcessReverse = None
 print("[Warning] Fused window process have not been installed. Please refer to get_started.md for installation.")
 
 
 class Mlp(nn.Module):
-    def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0.0):
+    def __init__(
+        self,
+        in_features,
+        hidden_features=None,
+        out_features=None,
+        act_layer=nn.GELU,
+        drop=0.0,
+    ):
         super().__init__()
         out_features = out_features or in_features
         hidden_features = hidden_features or in_features
@@ -416,7 +434,7 @@ def window_reverse(windows, window_size, H, W):
 
 
 class WindowAttention(nn.Module):
-    r""" Window based multi-head self attention (W-MSA) module with relative position bias.
+    r"""Window based multi-head self attention (W-MSA) module with relative position bias.
     It supports both of shifted and non-shifted window.
 
     Args:
@@ -429,14 +447,23 @@ class WindowAttention(nn.Module):
         proj_drop (float, optional): Dropout ratio of output. Default: 0.0
     """
 
-    def __init__(self, dim, window_size, num_heads, qkv_bias=True, qk_scale=None, attn_drop=0.0, proj_drop=0.0):
+    def __init__(
+        self,
+        dim,
+        window_size,
+        num_heads,
+        qkv_bias=True,
+        qk_scale=None,
+        attn_drop=0.0,
+        proj_drop=0.0,
+    ):
 
         super().__init__()
         self.dim = dim
         self.window_size = window_size  # Wh, Ww
         self.num_heads = num_heads
         head_dim = dim // num_heads
-        self.scale = qk_scale or head_dim ** -0.5
+        self.scale = qk_scale or head_dim**-0.5
 
         # define a parameter table of relative position bias
         self.relative_position_bias_table = nn.Parameter(
@@ -472,13 +499,19 @@ class WindowAttention(nn.Module):
         """
         B_, N, C = x.shape
         qkv = self.qkv(x).reshape(B_, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
-        q, k, v = qkv[0], qkv[1], qkv[2]  # make torchscript happy (cannot use tensor as tuple)
+        q, k, v = (
+            qkv[0],
+            qkv[1],
+            qkv[2],
+        )  # make torchscript happy (cannot use tensor as tuple)
 
         q = q * self.scale
         attn = q @ k.transpose(-2, -1)
 
         relative_position_bias = self.relative_position_bias_table[self.relative_position_index.view(-1)].view(
-            self.window_size[0] * self.window_size[1], self.window_size[0] * self.window_size[1], -1
+            self.window_size[0] * self.window_size[1],
+            self.window_size[0] * self.window_size[1],
+            -1,
         )  # Wh*Ww,Wh*Ww,nH
         relative_position_bias = relative_position_bias.permute(2, 0, 1).contiguous()  # nH, Wh*Ww, Wh*Ww
         attn = attn + relative_position_bias.unsqueeze(0)
@@ -516,7 +549,7 @@ class WindowAttention(nn.Module):
 
 
 class SwinTransformerBlock(nn.Module):
-    r""" Swin Transformer Block.
+    r"""Swin Transformer Block.
 
     Args:
         dim (int): Number of input channels.
@@ -579,7 +612,12 @@ class SwinTransformerBlock(nn.Module):
         self.drop_path = DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
         self.norm2 = norm_layer(dim)
         mlp_hidden_dim = int(dim * mlp_ratio)
-        self.mlp = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, act_layer=act_layer, drop=drop)
+        self.mlp = Mlp(
+            in_features=dim,
+            hidden_features=mlp_hidden_dim,
+            act_layer=act_layer,
+            drop=drop,
+        )
 
         if self.shift_size > 0:
             # calculate attention mask for SW-MSA
@@ -681,7 +719,7 @@ class SwinTransformerBlock(nn.Module):
 
 
 class PatchMerging(nn.Module):
-    r""" Patch Merging Layer.
+    r"""Patch Merging Layer.
 
     Args:
         input_resolution (tuple[int]): Resolution of input feature.
@@ -730,7 +768,7 @@ class PatchMerging(nn.Module):
 
 
 class BasicLayer(nn.Module):
-    """ A basic Swin Transformer layer for one stage.
+    """A basic Swin Transformer layer for one stage.
 
     Args:
         dim (int): Number of input channels.
@@ -789,7 +827,7 @@ class BasicLayer(nn.Module):
                     qk_scale=qk_scale,
                     drop=drop,
                     attn_drop=attn_drop,
-                    drop_path=drop_path[i] if isinstance(drop_path, list) else drop_path,
+                    drop_path=(drop_path[i] if isinstance(drop_path, list) else drop_path),
                     norm_layer=norm_layer,
                     fused_window_process=fused_window_process,
                 )
@@ -826,7 +864,7 @@ class BasicLayer(nn.Module):
 
 
 class PatchEmbed(nn.Module):
-    r""" Image to Patch Embedding
+    r"""Image to Patch Embedding
 
     Args:
         img_size (int): Image size.  Default: 224.
@@ -840,7 +878,10 @@ class PatchEmbed(nn.Module):
         super().__init__()
         img_size = to_2tuple(img_size)
         patch_size = to_2tuple(patch_size)
-        patches_resolution = [img_size[0] // patch_size[0], img_size[1] // patch_size[1]]
+        patches_resolution = [
+            img_size[0] // patch_size[0],
+            img_size[1] // patch_size[1],
+        ]
         self.img_size = img_size
         self.patch_size = patch_size
         self.patches_resolution = patches_resolution
@@ -875,7 +916,7 @@ class PatchEmbed(nn.Module):
 
 
 class SwinTransformer(nn.Module):
-    r""" Swin Transformer
+    r"""Swin Transformer
         A PyTorch impl of : `Swin Transformer: Hierarchical Vision Transformer using Shifted Windows`  -
           https://arxiv.org/pdf/2103.14030
 
@@ -960,8 +1001,11 @@ class SwinTransformer(nn.Module):
         self.layers = nn.ModuleList()
         for i_layer in range(self.num_layers):
             layer = BasicLayer(
-                dim=int(embed_dim * 2 ** i_layer),
-                input_resolution=(patches_resolution[0] // (2 ** i_layer), patches_resolution[1] // (2 ** i_layer)),
+                dim=int(embed_dim * 2**i_layer),
+                input_resolution=(
+                    patches_resolution[0] // (2**i_layer),
+                    patches_resolution[1] // (2**i_layer),
+                ),
                 depth=depths[i_layer],
                 num_heads=num_heads[i_layer],
                 window_size=window_size,
@@ -1025,6 +1069,6 @@ class SwinTransformer(nn.Module):
         flops += self.patch_embed.flops()
         for i, layer in enumerate(self.layers):
             flops += layer.flops()
-        flops += self.num_features * self.patches_resolution[0] * self.patches_resolution[1] // (2 ** self.num_layers)
+        flops += self.num_features * self.patches_resolution[0] * self.patches_resolution[1] // (2**self.num_layers)
         flops += self.num_features * self.num_classes
         return flops

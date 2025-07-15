@@ -11,14 +11,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.checkpoint as checkpoint
-from torch.nn import LayerNorm
-
 from monai.networks.blocks import MLPBlock as Mlp
-
 from monai.networks.layers import DropPath, trunc_normal_
 from monai.utils import ensure_tuple_rep, look_up_option, optional_import
-
-from .patchembedding import PatchEmbed
+from torch.nn import LayerNorm
 
 rearrange, _ = optional_import("einops", name="rearrange")
 
@@ -260,7 +256,13 @@ class SwinTransformerBlock4D(nn.Module):
         self.drop_path = DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
         self.norm2 = norm_layer(dim)
         mlp_hidden_dim = int(dim * mlp_ratio)
-        self.mlp = Mlp(hidden_size=dim, mlp_dim=mlp_hidden_dim, act=act_layer, dropout_rate=drop, dropout_mode="swin")
+        self.mlp = Mlp(
+            hidden_size=dim,
+            mlp_dim=mlp_hidden_dim,
+            act=act_layer,
+            dropout_rate=drop,
+            dropout_mode="swin",
+        )
 
     def forward_part1(self, x, mask_matrix):
         b, d, h, w, t, c = x.shape
@@ -276,7 +278,9 @@ class SwinTransformerBlock4D(nn.Module):
         dims = [b, dp, hp, wp, tp]
         if any(i > 0 for i in shift_size):
             shifted_x = torch.roll(
-                x, shifts=(-shift_size[0], -shift_size[1], -shift_size[2], -shift_size[3]), dims=(1, 2, 3, 4)
+                x,
+                shifts=(-shift_size[0], -shift_size[1], -shift_size[2], -shift_size[3]),
+                dims=(1, 2, 3, 4),
             )
             attn_mask = mask_matrix
         else:
@@ -288,7 +292,9 @@ class SwinTransformerBlock4D(nn.Module):
         shifted_x = window_reverse(attn_windows, window_size, dims)
         if any(i > 0 for i in shift_size):
             x = torch.roll(
-                shifted_x, shifts=(shift_size[0], shift_size[1], shift_size[2], shift_size[3]), dims=(1, 2, 3, 4)
+                shifted_x,
+                shifts=(shift_size[0], shift_size[1], shift_size[2], shift_size[3]),
+                dims=(1, 2, 3, 4),
             )
         else:
             x = shifted_x
@@ -325,7 +331,11 @@ class PatchMergingV2(nn.Module):
     """
 
     def __init__(
-        self, dim: int, norm_layer: Type[LayerNorm] = nn.LayerNorm, spatial_dims: int = 3, c_multiplier: int = 2
+        self,
+        dim: int,
+        norm_layer: Type[LayerNorm] = nn.LayerNorm,
+        spatial_dims: int = 3,
+        c_multiplier: int = 2,
     ) -> None:
         """
         Args:
@@ -376,10 +386,26 @@ def compute_mask(dims, window_size, shift_size, device):
 
     d, h, w, t = dims
     img_mask = torch.zeros((1, d, h, w, t, 1), device=device)
-    for d in slice(-window_size[0]), slice(-window_size[0], -shift_size[0]), slice(-shift_size[0], None):
-        for h in slice(-window_size[1]), slice(-window_size[1], -shift_size[1]), slice(-shift_size[1], None):
-            for w in slice(-window_size[2]), slice(-window_size[2], -shift_size[2]), slice(-shift_size[2], None):
-                for t in slice(-window_size[3]), slice(-window_size[3], -shift_size[3]), slice(-shift_size[3], None):
+    for d in (
+        slice(-window_size[0]),
+        slice(-window_size[0], -shift_size[0]),
+        slice(-shift_size[0], None),
+    ):
+        for h in (
+            slice(-window_size[1]),
+            slice(-window_size[1], -shift_size[1]),
+            slice(-shift_size[1], None),
+        ):
+            for w in (
+                slice(-window_size[2]),
+                slice(-window_size[2], -shift_size[2]),
+                slice(-shift_size[2], None),
+            ):
+                for t in (
+                    slice(-window_size[3]),
+                    slice(-window_size[3], -shift_size[3]),
+                    slice(-shift_size[3], None),
+                ):
                     img_mask[:, d, h, w, t, :] = cnt
                     cnt += 1
 
@@ -448,7 +474,7 @@ class BasicLayer(nn.Module):
                     qkv_bias=qkv_bias,
                     drop=drop,
                     attn_drop=attn_drop,
-                    drop_path=drop_path[i] if isinstance(drop_path, list) else drop_path,
+                    drop_path=(drop_path[i] if isinstance(drop_path, list) else drop_path),
                     norm_layer=norm_layer,
                     use_checkpoint=use_checkpoint,
                 )
@@ -458,7 +484,10 @@ class BasicLayer(nn.Module):
         self.downsample = downsample
         if callable(self.downsample):
             self.downsample = downsample(
-                dim=dim, norm_layer=norm_layer, spatial_dims=len(self.window_size), c_multiplier=c_multiplier
+                dim=dim,
+                norm_layer=norm_layer,
+                spatial_dims=len(self.window_size),
+                c_multiplier=c_multiplier,
             )
 
     def forward(self, x):
@@ -539,7 +568,7 @@ class BasicLayer_FullAttention(nn.Module):
                     qkv_bias=qkv_bias,
                     drop=drop,
                     attn_drop=attn_drop,
-                    drop_path=drop_path[i] if isinstance(drop_path, list) else drop_path,
+                    drop_path=(drop_path[i] if isinstance(drop_path, list) else drop_path),
                     norm_layer=norm_layer,
                     use_checkpoint=use_checkpoint,
                 )
@@ -549,7 +578,10 @@ class BasicLayer_FullAttention(nn.Module):
         self.downsample = downsample
         if callable(self.downsample):
             self.downsample = downsample(
-                dim=dim, norm_layer=norm_layer, spatial_dims=len(self.window_size), c_multiplier=c_multiplier
+                dim=dim,
+                norm_layer=norm_layer,
+                spatial_dims=len(self.window_size),
+                c_multiplier=c_multiplier,
             )
 
     def forward(self, x):
@@ -576,9 +608,7 @@ class PositionalEmbedding(nn.Module):
     Absolute positional embedding module
     """
 
-    def __init__(
-        self, dim: int, patch_dim: tuple
-    ) -> None:
+    def __init__(self, dim: int, patch_dim: tuple) -> None:
         """
         Args:
             dim: number of feature channels.
@@ -593,11 +623,9 @@ class PositionalEmbedding(nn.Module):
         self.pos_embed = nn.Parameter(torch.zeros(1, dim, d, h, w, 1))
         self.time_embed = nn.Parameter(torch.zeros(1, dim, 1, 1, 1, t))
 
-        
         trunc_normal_(self.pos_embed, std=0.02)
-        
-        trunc_normal_(self.time_embed, std=0.02)
 
+        trunc_normal_(self.time_embed, std=0.02)
 
     def forward(self, x):
         b, c, d, h, w, t = x.shape
@@ -607,6 +635,7 @@ class PositionalEmbedding(nn.Module):
         x = x + self.time_embed[:, :, :, :, :, :t]
 
         return x
+
 
 class SwinTransformer4D(nn.Module):
     """
@@ -690,11 +719,16 @@ class SwinTransformer4D(nn.Module):
         self.pos_drop = nn.Dropout(p=drop_rate)
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))]
 
-        #patch_num = int((img_size[0]/patch_size[0]) * (img_size[1]/patch_size[1]) * (img_size[2]/patch_size[2]))
-        #time_num = int(img_size[3]/patch_size[3])
-        patch_dim =  ((img_size[0]//patch_size[0]), (img_size[1]//patch_size[1]), (img_size[2]//patch_size[2]), (img_size[3]//patch_size[3]))
+        # patch_num = int((img_size[0]/patch_size[0]) * (img_size[1]/patch_size[1]) * (img_size[2]/patch_size[2]))
+        # time_num = int(img_size[3]/patch_size[3])
+        patch_dim = (
+            (img_size[0] // patch_size[0]),
+            (img_size[1] // patch_size[1]),
+            (img_size[2] // patch_size[2]),
+            (img_size[3] // patch_size[3]),
+        )
 
-        #print img, patch size, patch dim
+        # print img, patch size, patch dim
         # print("img_size: ", img_size)
         # print("patch_size: ", patch_size)
         # print("patch_dim: ", patch_dim)
@@ -703,12 +737,17 @@ class SwinTransformer4D(nn.Module):
         for i in range(self.num_layers):
             self.pos_embeds.append(PositionalEmbedding(pos_embed_dim, patch_dim))
             pos_embed_dim = pos_embed_dim * c_multiplier
-            patch_dim = (patch_dim[0]//2, patch_dim[1]//2, patch_dim[2]//2, patch_dim[3])
+            patch_dim = (
+                patch_dim[0] // 2,
+                patch_dim[1] // 2,
+                patch_dim[2] // 2,
+                patch_dim[3],
+            )
 
         # build layer
         self.layers = nn.ModuleList()
         down_sample_mod = look_up_option(downsample, MERGING_MODE) if isinstance(downsample, str) else downsample
-    
+
         layer = BasicLayer(
             dim=int(embed_dim),
             depth=depths[0],
@@ -799,10 +838,9 @@ class SwinTransformer4D(nn.Module):
         self.avgpool = nn.AdaptiveAvgPool1d(1)  #
         # self.head = nn.Linear(self.num_features, 1) if num_classes == 2 else num_classes # moved this part to clf_mlp or reg_mlp
 
-
     def forward(self, x):
 
-        #print model parameters
+        # print model parameters
         # for name, param in self.named_parameters():
         #     if param.requires_grad:
         #         print(name, param.data.shape)
@@ -825,4 +863,66 @@ class SwinTransformer4D(nn.Module):
         # x = torch.flatten(x, 1)
         # x = self.head(x)
 
+        return x
+
+
+class PatchEmbed(nn.Module):
+    """4D Image to Patch Embedding"""
+
+    def __init__(
+        self,
+        img_size=(96, 96, 96, 20),
+        patch_size=(4, 4, 4, 1),
+        in_chans=2,
+        embed_dim=24,
+        norm_layer=None,
+        flatten=True,
+        spatial_dims=3,
+    ):
+        assert len(patch_size) == 4, "you have to give four numbers, each corresponds h, w, d, t"
+        assert patch_size[3] == 1, "temporal axis merging is not implemented yet"
+
+        super().__init__()
+        self.img_size = img_size
+        self.patch_size = patch_size
+        self.grid_size = (
+            img_size[0] // patch_size[0],
+            img_size[1] // patch_size[1],
+            img_size[2] // patch_size[2],
+            # img_size[3] // patch_size[3],
+        )
+        self.embed_dim = embed_dim
+        self.num_patches = self.grid_size[0] * self.grid_size[1]
+        self.flatten = flatten
+
+        self.fc = nn.Linear(
+            in_features=in_chans * patch_size[0] * patch_size[1] * patch_size[2] * patch_size[3],
+            out_features=embed_dim,
+        )
+
+        self.norm = norm_layer(embed_dim) if norm_layer else nn.Identity()
+
+    def forward(self, x):
+        torch.cuda.nvtx.range_push("PatchEmbed")
+        B, C, H, W, D, T = x.shape
+        assert H == self.img_size[0], f"Input image height ({H}) doesn't match model ({self.img_size[0]})."
+        assert W == self.img_size[1], f"Input image width ({W}) doesn't match model ({self.img_size[1]})."
+        assert D == self.img_size[2], f"Input image width ({D}) doesn't match model ({self.img_size[2]})."
+        x = self.proj(x)
+        if self.flatten:
+            x = x.flatten(2).transpose(1, 2)  # BCHW -> BNC
+        x = self.norm(x)
+        torch.cuda.nvtx.range_pop()
+        return x
+
+    def proj(self, x):
+        B, C, H, W, D, T = x.shape
+        pH, pW, pD = self.grid_size
+        sH, sW, sD, sT = self.patch_size
+
+        x = x.view(B, C, pH, sH, pW, sW, pD, sD, -1, sT)
+        x = x.permute(0, 2, 4, 6, 8, 3, 5, 7, 9, 1).contiguous().view(-1, sH * sW * sD * sT * C)
+        x = self.fc(x)
+        x = x.view(B, pH, pW, pD, -1, self.embed_dim).contiguous()
+        x = x.permute(0, 5, 1, 2, 3, 4)
         return x
