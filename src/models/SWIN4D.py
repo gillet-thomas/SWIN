@@ -20,15 +20,23 @@ class SWIN4D(nn.Module):
             last_layer_full_MSA=config["last_layer_full_MSA"],
             attn_drop_rate=config["dropout"],
         )
-        num_tokens = config["embed_dim"] * (config["c_multiplier"] ** (config["n_stages"] - 1))
-        self.output_head = clf_mlpv1(num_classes=config["num_classes"], num_tokens=num_tokens)
+        num_tokens = config["embed_dim"] * (
+            config["c_multiplier"] ** (config["n_stages"] - 1)
+        )
+        self.output_head = clf_mlpv1(
+            num_classes=config["num_classes"], num_tokens=num_tokens
+        )
 
     def forward(self, x):
-        x = self.model(x)  # input ([8, 1, 112, 112, 112, 20]) -> ([8, 288, 2, 2, 2, 20])
+        x = self.model(
+            x
+        )  # input ([8, 1, 112, 112, 112, 20]) -> ([8, 288, 2, 2, 2, 20])
         x = self.output_head(x)  # ([8, 288, 2, 2, 2, 20]) -> ([8, 1])
         return x
 
     def get_embeddings(self, x):
-        x = self.model(x)  # input ([8, 1, 112, 112, 112, 20]) -> ([8, 288, 2, 2, 2, 20])
+        x = self.model(
+            x
+        )  # input ([8, 1, 112, 112, 112, 20]) -> ([8, 288, 2, 2, 2, 20])
         x = x.view(x.size(0), -1)  # Flattens ([8, 288, 2, 2, 2, 20]) -> ([8, 4608])
         return x

@@ -46,12 +46,18 @@ class Trainer:
         self.log_interval = len(self.dataloader) // 10  # Log every 10% of batches
 
         total_params = sum(p.numel() for p in self.model.parameters())
-        trainable_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
+        trainable_params = sum(
+            p.numel() for p in self.model.parameters() if p.requires_grad
+        )
         print(
             f"Model total parameters: {total_params/1e6:.2f}M (trainable {trainable_params/1e6:.2f}M and frozen {(total_params-trainable_params)/1e6:.2f}M)"
         )
-        print(f"Number of batches training: {len(self.dataloader)} of size {self.batch_size}")
-        print(f"Number of batches validation: {len(self.val_dataloader)} of size {self.batch_size}")
+        print(
+            f"Number of batches training: {len(self.dataloader)} of size {self.batch_size}"
+        )
+        print(
+            f"Number of batches validation: {len(self.val_dataloader)} of size {self.batch_size}"
+        )
         print("=" * 50)
 
     def run(self):
@@ -72,7 +78,9 @@ class Trainer:
         running_loss, correct, total = 0.0, 0, 0
 
         for i, (fmri_sequence, target) in enumerate(self.dataloader):
-            fmri_sequence, target = fmri_sequence.to(self.device), target.to(self.device)
+            fmri_sequence, target = fmri_sequence.to(self.device), target.to(
+                self.device
+            )
             fmri_sequence, target = fmri_sequence.float(), target.float()
 
             with torch.autocast(device_type="cuda", dtype=torch.float16):
@@ -87,7 +95,9 @@ class Trainer:
 
             running_loss += loss.item()
 
-            predicted_labels = (torch.sigmoid(outputs) >= 0.5).long()  # BCEWithLogitsLoss
+            predicted_labels = (
+                torch.sigmoid(outputs) >= 0.5
+            ).long()  # BCEWithLogitsLoss
             # predicted_labels = torch.argmax(outputs, dim=1) # CrossEntropyLoss
             correct += (predicted_labels == target).sum().item()
             total += target.size(0)  # returns the batch size
@@ -116,7 +126,9 @@ class Trainer:
 
         with torch.no_grad():
             for i, (fmri_sequence, target) in enumerate(self.val_dataloader):
-                fmri_sequence, target = fmri_sequence.to(self.device), target.to(self.device)
+                fmri_sequence, target = fmri_sequence.to(self.device), target.to(
+                    self.device
+                )
                 fmri_sequence, target = fmri_sequence.float(), target.float()
 
                 outputs = self.model(fmri_sequence)
@@ -133,4 +145,10 @@ class Trainer:
             print(
                 f"[VALIDATION] epoch {epoch}\t| total_batch {i}\t| val_loss {avg_val_loss:.5f}\t| val_accuracy {accuracy:.5f}"
             )
-            wandb.log({"epoch": epoch, "val_loss": round(avg_val_loss, 5), "val_accuracy": round(accuracy, 5)})
+            wandb.log(
+                {
+                    "epoch": epoch,
+                    "val_loss": round(avg_val_loss, 5),
+                    "val_accuracy": round(accuracy, 5),
+                }
+            )

@@ -5,7 +5,9 @@ import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import Dataset
-from src.utils.helpers import get_timepoints, load_and_process_fmri, save_datasets, save_subjects
+
+from src.utils.helpers import (get_timepoints_adni, load_and_process_fmri,
+                               save_datasets, save_subjects)
 
 
 class ADNISwiFTDataset(Dataset):
@@ -18,14 +20,21 @@ class ADNISwiFTDataset(Dataset):
         if generate_data:
             subjects = self.generate_data()
 
-        with open(f"{self.config['path_pickle_dataset']}/data_{self.mode}.pkl", "rb") as f:
+        with open(
+            f"{self.config['path_pickle_dataset']}/data_{self.mode}.pkl", "rb"
+        ) as f:
             subjects = pickle.load(f)
-            self.data = get_timepoints(subjects, sequence_length=self.config["sequence_length"])
+            self.data = get_timepoints_adni(
+                subjects, limit=140, sequence_length=self.config["sequence_length"]
+            )
             # self.data is subject, target, path_fmri, start_frame_idx
 
         if generate_data:
             img = nib.load(self.data[0][2]).dataobj[:, :, :, 70]
-            nib.save(nib.Nifti1Image(img, np.eye(4)), f"./visualization/sample_{self.mode}_adni.nii")
+            nib.save(
+                nib.Nifti1Image(img, np.eye(4)),
+                f"./results/visualization/sample_{self.mode}_adni.nii",
+            )
 
         print(f"number of {self.mode} subj: {len(subjects)}")
         print(f"length of {self.mode} samples: {len(self.data)}")
@@ -36,7 +45,10 @@ class ADNISwiFTDataset(Dataset):
     def generate_data(self):
         all_subjects = dict()
 
-        meta_df = pd.read_csv(self.config["csv_path_adni"], usecols=["ID", "Subject", "Group", "Path_fMRI_brain"])
+        meta_df = pd.read_csv(
+            self.config["csv_path_adni"],
+            usecols=["ID", "Subject", "Group", "Path_fMRI_brain"],
+        )
 
         # Filtering
         print(f"Filtering data for {self.config['downstream_task']} task...")
@@ -46,7 +58,11 @@ class ADNISwiFTDataset(Dataset):
         # meta_df["sex"] = meta_df["Sex"].apply(lambda x: 0 if x == 'F' else 1)
 
         # Shuffle subjects
-        all_subjects = meta_df.set_index("ID")[["Subject", "Group", "Path_fMRI_brain"]].apply(list, axis=1).to_dict()
+        all_subjects = (
+            meta_df.set_index("ID")[["Subject", "Group", "Path_fMRI_brain"]]
+            .apply(list, axis=1)
+            .to_dict()
+        )
         subjects_list = list(all_subjects.keys())
         np.random.shuffle(subjects_list)
 
@@ -57,17 +73,25 @@ class ADNISwiFTDataset(Dataset):
 
         # Split unique subjects into train, validation, and test sets
         train_ids = subjects_list[:num_train_subjects]
-        val_ids = subjects_list[num_train_subjects : num_train_subjects + num_val_subjects]
+        val_ids = subjects_list[
+            num_train_subjects : num_train_subjects + num_val_subjects
+        ]
         test_ids = subjects_list[num_train_subjects + num_val_subjects :]
 
-        num_train_target_0 = len([id for id in train_ids if all_subjects[id][1] == "CN"])
-        num_train_target_1 = len([id for id in train_ids if all_subjects[id][1] == "AD"])
+        num_train_target_0 = len(
+            [id for id in train_ids if all_subjects[id][1] == "CN"]
+        )
+        num_train_target_1 = len(
+            [id for id in train_ids if all_subjects[id][1] == "AD"]
+        )
         print(f"Number of train subjects with target 0: {num_train_target_0}")
         print(f"Number of train subjects with target 1: {num_train_target_1}")
         total_samples = num_train_target_0 + num_train_target_1
         weight_0 = total_samples / (2 * num_train_target_0)
         weight_1 = total_samples / (2 * num_train_target_1)
-        self.training_class_weights = torch.tensor([weight_0, weight_1], dtype=torch.float32).to(self.config["device"])
+        self.training_class_weights = torch.tensor(
+            [weight_0, weight_1], dtype=torch.float32
+        ).to(self.config["device"])
 
         num_val_target_0 = len([id for id in val_ids if all_subjects[id][1] == "CN"])
         num_val_target_1 = len([id for id in val_ids if all_subjects[id][1] == "AD"])
@@ -80,7 +104,13 @@ class ADNISwiFTDataset(Dataset):
         print(f"Number of test subjects with target 1: {num_test_target_1}")
 
         # Save datasets and subjects
-        save_datasets(self.config["path_pickle_dataset"], all_subjects, train_ids, val_ids, test_ids)
+        save_datasets(
+            self.config["path_pickle_dataset"],
+            all_subjects,
+            train_ids,
+            val_ids,
+            test_ids,
+        )
         save_subjects(self.config["path_pickle_dataset"], train_ids, val_ids, test_ids)
         print("Datasets saved!")
 
@@ -89,7 +119,9 @@ class ADNISwiFTDataset(Dataset):
         subject_name, group, path_fmri, start_frame_idx = self.data[index]
 
         target = torch.tensor(0 if group == "AD" else 1)
-        fmri_data = load_and_process_fmri(path_fmri, start_frame_idx, self.config["img_size"])
+        fmri_data = load_and_process_fmri(
+            path_fmri, start_frame_idx, self.config["img_size"]
+        )
 
         return fmri_data, target
 
