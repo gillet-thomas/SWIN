@@ -178,19 +178,13 @@ class WindowAttention4D(nn.Module):
             mask: (0/-inf) mask with shape of (num_windows, N, N) or None
         """
         b_, n, c = x.shape
-        qkv = (
-            self.qkv(x)
-            .reshape(b_, n, 3, self.num_heads, c // self.num_heads)
-            .permute(2, 0, 3, 1, 4)
-        )
+        qkv = self.qkv(x).reshape(b_, n, 3, self.num_heads, c // self.num_heads).permute(2, 0, 3, 1, 4)
         q, k, v = qkv[0], qkv[1], qkv[2]
         q = q * self.scale
         attn = q @ k.transpose(-2, -1)
         if mask is not None:
             nw = mask.shape[0]
-            attn = attn.view(b_ // nw, nw, self.num_heads, n, n) + mask.to(
-                attn.dtype
-            ).unsqueeze(1).unsqueeze(0)
+            attn = attn.view(b_ // nw, nw, self.num_heads, n, n) + mask.to(attn.dtype).unsqueeze(1).unsqueeze(0)
             attn = attn.view(-1, self.num_heads, n, n)
             attn = self.softmax(attn)
         else:
@@ -272,18 +266,14 @@ class SwinTransformerBlock4D(nn.Module):
 
     def forward_part1(self, x, mask_matrix):
         b, d, h, w, t, c = x.shape
-        window_size, shift_size = get_window_size(
-            (d, h, w, t), self.window_size, self.shift_size
-        )
+        window_size, shift_size = get_window_size((d, h, w, t), self.window_size, self.shift_size)
         x = self.norm1(x)
         pad_d0 = pad_h0 = pad_w0 = pad_t0 = 0
         pad_d1 = (window_size[0] - d % window_size[0]) % window_size[0]
         pad_h1 = (window_size[1] - h % window_size[1]) % window_size[1]
         pad_w1 = (window_size[2] - w % window_size[2]) % window_size[2]
         pad_t1 = (window_size[3] - t % window_size[3]) % window_size[3]
-        x = F.pad(
-            x, (0, 0, pad_t0, pad_t1, pad_w0, pad_w1, pad_h0, pad_h1, pad_d0, pad_d1)
-        )  # last tuple first in
+        x = F.pad(x, (0, 0, pad_t0, pad_t1, pad_w0, pad_w1, pad_h0, pad_h1, pad_d0, pad_d1))  # last tuple first in
         _, dp, hp, wp, tp, _ = x.shape
         dims = [b, dp, hp, wp, tp]
         if any(i > 0 for i in shift_size):
@@ -366,10 +356,7 @@ class PatchMergingV2(nn.Module):
         x_shape = x.size()
         b, d, h, w, t, c = x_shape
         x = torch.cat(
-            [
-                x[:, i::2, j::2, k::2, :, :]
-                for i, j, k in itertools.product(range(2), range(2), range(2))
-            ],
+            [x[:, i::2, j::2, k::2, :, :] for i, j, k in itertools.product(range(2), range(2), range(2))],
             -1,
         )
 
@@ -425,9 +412,7 @@ def compute_mask(dims, window_size, shift_size, device):
     mask_windows = window_partition(img_mask, window_size)
     mask_windows = mask_windows.squeeze(-1)
     attn_mask = mask_windows.unsqueeze(1) - mask_windows.unsqueeze(2)
-    attn_mask = attn_mask.masked_fill(attn_mask != 0, float(-100.0)).masked_fill(
-        attn_mask == 0, float(0.0)
-    )
+    attn_mask = attn_mask.masked_fill(attn_mask != 0, float(-100.0)).masked_fill(attn_mask == 0, float(0.0))
 
     return attn_mask
 
@@ -489,9 +474,7 @@ class BasicLayer(nn.Module):
                     qkv_bias=qkv_bias,
                     drop=drop,
                     attn_drop=attn_drop,
-                    drop_path=(
-                        drop_path[i] if isinstance(drop_path, list) else drop_path
-                    ),
+                    drop_path=(drop_path[i] if isinstance(drop_path, list) else drop_path),
                     norm_layer=norm_layer,
                     use_checkpoint=use_checkpoint,
                 )
@@ -509,9 +492,7 @@ class BasicLayer(nn.Module):
 
     def forward(self, x):
         b, c, d, h, w, t = x.size()
-        window_size, shift_size = get_window_size(
-            (d, h, w, t), self.window_size, self.shift_size
-        )
+        window_size, shift_size = get_window_size((d, h, w, t), self.window_size, self.shift_size)
         x = rearrange(x, "b c d h w t -> b d h w t c")
         dp = int(np.ceil(d / window_size[0])) * window_size[0]
         hp = int(np.ceil(h / window_size[1])) * window_size[1]
@@ -587,9 +568,7 @@ class BasicLayer_FullAttention(nn.Module):
                     qkv_bias=qkv_bias,
                     drop=drop,
                     attn_drop=attn_drop,
-                    drop_path=(
-                        drop_path[i] if isinstance(drop_path, list) else drop_path
-                    ),
+                    drop_path=(drop_path[i] if isinstance(drop_path, list) else drop_path),
                     norm_layer=norm_layer,
                     use_checkpoint=use_checkpoint,
                 )
@@ -607,9 +586,7 @@ class BasicLayer_FullAttention(nn.Module):
 
     def forward(self, x):
         b, c, d, h, w, t = x.size()
-        window_size, shift_size = get_window_size(
-            (d, h, w, t), self.window_size, self.shift_size
-        )
+        window_size, shift_size = get_window_size((d, h, w, t), self.window_size, self.shift_size)
         x = rearrange(x, "b c d h w t -> b d h w t c")
         dp = int(np.ceil(d / window_size[0])) * window_size[0]
         hp = int(np.ceil(h / window_size[1])) * window_size[1]
@@ -769,11 +746,7 @@ class SwinTransformer4D(nn.Module):
 
         # build layer
         self.layers = nn.ModuleList()
-        down_sample_mod = (
-            look_up_option(downsample, MERGING_MODE)
-            if isinstance(downsample, str)
-            else downsample
-        )
+        down_sample_mod = look_up_option(downsample, MERGING_MODE) if isinstance(downsample, str) else downsample
 
         layer = BasicLayer(
             dim=int(embed_dim),
@@ -817,11 +790,7 @@ class SwinTransformer4D(nn.Module):
                 depth=depths[(self.num_layers - 1)],
                 num_heads=num_heads[(self.num_layers - 1)],
                 window_size=self.window_size,
-                drop_path=dpr[
-                    sum(depths[: (self.num_layers - 1)]) : sum(
-                        depths[: (self.num_layers - 1) + 1]
-                    )
-                ],
+                drop_path=dpr[sum(depths[: (self.num_layers - 1)]) : sum(depths[: (self.num_layers - 1) + 1])],
                 mlp_ratio=mlp_ratio,
                 qkv_bias=qkv_bias,
                 drop=drop_rate,
@@ -849,11 +818,7 @@ class SwinTransformer4D(nn.Module):
                 num_heads=num_heads[(self.num_layers - 1)],
                 # change the window size to the entire grid size
                 window_size=self.last_window_size,
-                drop_path=dpr[
-                    sum(depths[: (self.num_layers - 1)]) : sum(
-                        depths[: (self.num_layers - 1) + 1]
-                    )
-                ],
+                drop_path=dpr[sum(depths[: (self.num_layers - 1)]) : sum(depths[: (self.num_layers - 1) + 1])],
                 mlp_ratio=mlp_ratio,
                 qkv_bias=qkv_bias,
                 drop=drop_rate,
@@ -914,9 +879,7 @@ class PatchEmbed(nn.Module):
         flatten=True,
         spatial_dims=3,
     ):
-        assert (
-            len(patch_size) == 4
-        ), "you have to give four numbers, each corresponds h, w, d, t"
+        assert len(patch_size) == 4, "you have to give four numbers, each corresponds h, w, d, t"
         assert patch_size[3] == 1, "temporal axis merging is not implemented yet"
 
         super().__init__()
@@ -933,11 +896,7 @@ class PatchEmbed(nn.Module):
         self.flatten = flatten
 
         self.fc = nn.Linear(
-            in_features=in_chans
-            * patch_size[0]
-            * patch_size[1]
-            * patch_size[2]
-            * patch_size[3],
+            in_features=in_chans * patch_size[0] * patch_size[1] * patch_size[2] * patch_size[3],
             out_features=embed_dim,
         )
 
@@ -946,15 +905,9 @@ class PatchEmbed(nn.Module):
     def forward(self, x):
         torch.cuda.nvtx.range_push("PatchEmbed")
         B, C, H, W, D, T = x.shape
-        assert (
-            H == self.img_size[0]
-        ), f"Input image height ({H}) doesn't match model ({self.img_size[0]})."
-        assert (
-            W == self.img_size[1]
-        ), f"Input image width ({W}) doesn't match model ({self.img_size[1]})."
-        assert (
-            D == self.img_size[2]
-        ), f"Input image width ({D}) doesn't match model ({self.img_size[2]})."
+        assert H == self.img_size[0], f"Input image height ({H}) doesn't match model ({self.img_size[0]})."
+        assert W == self.img_size[1], f"Input image width ({W}) doesn't match model ({self.img_size[1]})."
+        assert D == self.img_size[2], f"Input image width ({D}) doesn't match model ({self.img_size[2]})."
         x = self.proj(x)
         if self.flatten:
             x = x.flatten(2).transpose(1, 2)  # BCHW -> BNC
@@ -968,11 +921,7 @@ class PatchEmbed(nn.Module):
         sH, sW, sD, sT = self.patch_size
 
         x = x.view(B, C, pH, sH, pW, sW, pD, sD, -1, sT)
-        x = (
-            x.permute(0, 2, 4, 6, 8, 3, 5, 7, 9, 1)
-            .contiguous()
-            .view(-1, sH * sW * sD * sT * C)
-        )
+        x = x.permute(0, 2, 4, 6, 8, 3, 5, 7, 9, 1).contiguous().view(-1, sH * sW * sD * sT * C)
         x = self.fc(x)
         x = x.view(B, pH, pW, pD, -1, self.embed_dim).contiguous()
         x = x.permute(0, 5, 1, 2, 3, 4)

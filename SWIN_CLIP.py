@@ -17,9 +17,9 @@ from torch.utils.data import Dataset
 from tqdm import tqdm
 
 import wandb
-from src.models.mlp import mlpv1
+from src.models.mlp import clf_mlpv1
 from src.models.swin4d_transformer_ver7 import SwinTransformer4D
-from src.utils.helpers import (get_timepoints, load_and_process_fmri,
+from src.utils.helpers import (get_timepoints_clip, load_and_process_fmri,
                                save_datasets, save_subjects)
 
 
@@ -33,13 +33,9 @@ class ADNISwiFTDataset(Dataset):
         if generate_data:
             subjects = self.split_subjects()
 
-        with open(
-            f"{self.config['path_pickle_dataset']}/data_{self.mode}.pkl", "rb"
-        ) as f:
+        with open(f"{self.config['path_pickle_dataset']}/data_{self.mode}.pkl", "rb") as f:
             subjects = pickle.load(f)
-            self.data = get_timepoints(
-                subjects, sequence_length=self.config["sequence_length"]
-            )
+            self.data = get_timepoints_clip(subjects, sequence_length=self.config["sequence_length"])
             # self.data is subject, target, path_fmri, start_frame_idx
 
         if generate_data:
@@ -71,9 +67,7 @@ class ADNISwiFTDataset(Dataset):
 
         # Shuffle subjects
         all_subjects = (
-            meta_df.set_index("ID")[["Subject", "Age", "Sex", "Path_fMRI_brain"]]
-            .apply(list, axis=1)
-            .to_dict()
+            meta_df.set_index("ID")[["Subject", "Age", "Sex", "Path_fMRI_brain"]].apply(list, axis=1).to_dict()
         )
         subjects_list = list(all_subjects.keys())
         np.random.shuffle(subjects_list)
@@ -85,9 +79,7 @@ class ADNISwiFTDataset(Dataset):
 
         # Split unique subjects into train, validation, and test sets
         train_ids = subjects_list[:num_train_subjects]
-        val_ids = subjects_list[
-            num_train_subjects : num_train_subjects + num_val_subjects
-        ]
+        val_ids = subjects_list[num_train_subjects : num_train_subjects + num_val_subjects]
         test_ids = subjects_list[num_train_subjects + num_val_subjects :]
 
         # num_train_target_0 = len([id for id in train_ids if all_subjects[id][1] == 0])
@@ -121,9 +113,7 @@ class ADNISwiFTDataset(Dataset):
         subject_name, path_fmri, age, sex, start_frame_idx = self.data[index]
         sex_one_hot = torch.tensor([1.0, 0.0]) if sex == 0 else torch.tensor([0.0, 1.0])
 
-        fmri_data = load_and_process_fmri(
-            path_fmri, start_frame_idx, self.config["img_size"]
-        )
+        fmri_data = load_and_process_fmri(path_fmri, start_frame_idx, self.config["img_size"])
 
         return fmri_data, sex_one_hot, age
 
@@ -148,19 +138,15 @@ class Model(nn.Module):
             attn_drop_rate=config["dropout"],
         )
         # num_tokens = config["embed_dim"] * (config["c_multiplier"] ** (config["n_stages"] - 1))
-        # self.output_head = mlpv1(num_classes=2, num_tokens = num_tokens)
+        # self.output_head = clf_mlpv1(num_classes=2, num_tokens = num_tokens)
 
     def forward(self, x):
-        x = self.model(
-            x
-        )  # input ([8, 1, 112, 112, 112, 20]) -> ([8, 288, 2, 2, 2, 20])
+        x = self.model(x)  # input ([8, 1, 112, 112, 112, 20]) -> ([8, 288, 2, 2, 2, 20])
         # x = self.output_head(x)     # ([8, 288, 2, 2, 2, 20]) -> ([8, 1])
         return x
 
     def get_embeddings(self, x):
-        x = self.model(
-            x
-        )  # input ([8, 1, 112, 112, 112, 20]) -> ([8, 288, 2, 2, 2, 20])
+        x = self.model(x)  # input ([8, 1, 112, 112, 112, 20]) -> ([8, 288, 2, 2, 2, 20])
         x = x.view(x.size(0), -1)  # Flattens ([8, 288, 2, 2, 2, 20]) -> ([8, 4608])
         return x
 
@@ -171,22 +157,14 @@ class CLIP(nn.Module):
         self.device = config["device"]
         self.image_embedding = config["image_embedding"]
         self.text_embedding = config["text_embedding"]
-        self.temperature = nn.Parameter(
-            torch.ones([], device=self.device) * np.log(1 / 0.07)
-        )
+        self.temperature = nn.Parameter(torch.ones([], device=self.device) * np.log(1 / 0.07))
         self.image_encoder = Model(config).to(self.device)
-        self.image_projection = ProjectionHead(
-            config, embedding_dim=self.image_embedding
-        ).to(self.device)
-        self.text_projection = ProjectionHead(
-            config, embedding_dim=self.text_embedding
-        ).to(self.device)
+        self.image_projection = ProjectionHead(config, embedding_dim=self.image_embedding).to(self.device)
+        self.text_projection = ProjectionHead(config, embedding_dim=self.text_embedding).to(self.device)
 
         # Load weights and rename keys
         image_encoder_state_dict = torch.load(config["best_swin_age_group"])
-        new_image_encoder_state_dict = {
-            k: v for k, v in image_encoder_state_dict.items() if k.startswith("model.")
-        }
+        new_image_encoder_state_dict = {k: v for k, v in image_encoder_state_dict.items() if k.startswith("model.")}
 
         # Use weights and freeze model
         self.image_encoder.eval()
@@ -218,9 +196,7 @@ class CLIP(nn.Module):
         # Defines the label index to be maximized on the diagonal (image 1 should match with text 1, ...)
         # Each label indicates the "correct" index in the logits row that should be maximized for each text-image pair
         # Create an array of indices from 0 to batch_size
-        labels = torch.arange(logits.shape[0]).to(
-            self.device
-        )  ## shape[0] is batch_size (64)
+        labels = torch.arange(logits.shape[0]).to(self.device)  ## shape[0] is batch_size (64)
 
         # Calculate loss in both directions and average them
         # cross-entropy loss is used to maximize the similarity between matching pairs (diagonal elements of logits)
@@ -282,18 +258,12 @@ class Trainer:
         self.log_interval = len(self.dataloader) // 10  # Log every 10% of batches
 
         total_params = sum(p.numel() for p in self.model.parameters())
-        trainable_params = sum(
-            p.numel() for p in self.model.parameters() if p.requires_grad
-        )
+        trainable_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
         print(
             f"Model total parameters: {total_params/1e6:.2f}M (trainable {trainable_params/1e6:.2f}M and frozen {(total_params-trainable_params)/1e6:.2f}M)"
         )
-        print(
-            f"Number of batches training: {len(self.dataloader)} of size {self.batch_size}"
-        )
-        print(
-            f"Number of batches validation: {len(self.val_dataloader)} of size {self.batch_size}"
-        )
+        print(f"Number of batches training: {len(self.dataloader)} of size {self.batch_size}")
+        print(f"Number of batches validation: {len(self.val_dataloader)} of size {self.batch_size}")
         print("=" * 50)
 
     def run(self):
@@ -362,9 +332,7 @@ class Trainer:
                 val_loss += loss.item()
 
             avg_val_loss = val_loss / len(self.val_dataloader)
-            print(
-                f"[VALIDATION] epoch {epoch}\t| total_batch {i}\t| val_loss {avg_val_loss:.5f}"
-            )
+            print(f"[VALIDATION] epoch {epoch}\t| total_batch {i}\t| val_loss {avg_val_loss:.5f}")
             wandb.log({"epoch": epoch, "val_loss": round(avg_val_loss, 5)})
 
     def evaluate_classification_accuracy(self, dataloader):
@@ -374,62 +342,38 @@ class Trainer:
 
         with torch.no_grad():
             # Pass through the text_projection and normalize, just like in forward()
-            female_one_hot = (
-                torch.tensor([1.0, 0.0], device=self.device).float().unsqueeze(0)
-            )  # Shape (1, 2)
+            female_one_hot = torch.tensor([1.0, 0.0], device=self.device).float().unsqueeze(0)  # Shape (1, 2)
             female_text_embedding = self.model.text_projection(female_one_hot)
-            female_text_embedding = F.normalize(
-                female_text_embedding, dim=-1
-            )  # Shape (1, config["projection_dim"])
+            female_text_embedding = F.normalize(female_text_embedding, dim=-1)  # Shape (1, config["projection_dim"])
 
-            male_one_hot = (
-                torch.tensor([0.0, 1.0], device=self.device).float().unsqueeze(0)
-            )  # Shape (1, 2)
+            male_one_hot = torch.tensor([0.0, 1.0], device=self.device).float().unsqueeze(0)  # Shape (1, 2)
             male_text_embedding = self.model.text_projection(male_one_hot)
-            male_text_embedding = F.normalize(
-                male_text_embedding, dim=-1
-            )  # Shape (1, config["projection_dim"])
+            male_text_embedding = F.normalize(male_text_embedding, dim=-1)  # Shape (1, config["projection_dim"])
 
         with torch.no_grad():
-            for fmri_sequence, target_sex_one_hot, age_one_hot in tqdm(
-                dataloader, desc="Evaluating CLIP Accuracy"
-            ):
-                fmri_sequence, target_sex_one_hot = fmri_sequence.to(
-                    self.device
-                ), target_sex_one_hot.to(self.device)
+            for fmri_sequence, target_sex_one_hot, age_one_hot in tqdm(dataloader, desc="Evaluating CLIP Accuracy"):
+                fmri_sequence, target_sex_one_hot = fmri_sequence.to(self.device), target_sex_one_hot.to(self.device)
 
                 # Get image embedding
-                image_features = self.model.image_encoder(fmri_sequence).view(
-                    fmri_sequence.size(0), -1
-                )
+                image_features = self.model.image_encoder(fmri_sequence).view(fmri_sequence.size(0), -1)
                 image_embeddings = self.model.image_projection(image_features)
                 image_embeddings = F.normalize(image_embeddings, dim=-1)
 
                 # Calculate similarities
                 # female_similarity = F.cosine_similarity(image_embeddings, female_text_embedding, dim=-1) * self.model.temperature
                 # male_similarity = F.cosine_similarity(image_embeddings, male_text_embedding, dim=-1) * self.model.temperature
-                female_similarity = (
-                    image_embeddings @ female_text_embedding.T
-                ) * self.model.temperature
-                male_similarity = (
-                    image_embeddings @ male_text_embedding.T
-                ) * self.model.temperature
+                female_similarity = (image_embeddings @ female_text_embedding.T) * self.model.temperature
+                male_similarity = (image_embeddings @ male_text_embedding.T) * self.model.temperature
 
                 # Predict class based on higher similarity
                 # Assuming female is target_sex_one_hot[:, 0] == 1 and male is target_sex_one_hot[:, 1] == 1
                 # Adjust indexing based on your one-hot encoding definition
-                predicted_labels = (
-                    male_similarity > female_similarity
-                ).squeeze()  # 1 if male, 0 if female
+                predicted_labels = (male_similarity > female_similarity).squeeze()  # 1 if male, 0 if female
 
                 # female is [1,0] and male is [0,1], female is 0 and male is 1
-                ground_truth_labels = target_sex_one_hot[
-                    :, 1
-                ]  # 0 for female, 1 for male
+                ground_truth_labels = target_sex_one_hot[:, 1]  # 0 for female, 1 for male
 
-                correct_predictions += (
-                    (predicted_labels == ground_truth_labels).sum().item()
-                )
+                correct_predictions += (predicted_labels == ground_truth_labels).sum().item()
                 total_samples += fmri_sequence.size(0)
 
         accuracy = correct_predictions / total_samples
@@ -438,15 +382,9 @@ class Trainer:
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train or Evaluate fMRI Model")
-    parser.add_argument(
-        "name", type=str, nargs="?", default=None, help="WandB run name (optional)"
-    )
-    parser.add_argument(
-        "--task", type=str, default="age_group", help="Task to run (age_group or sex)"
-    )
-    parser.add_argument(
-        "--cuda", type=int, default=2, help="CUDA device to use (e.g., 0 for GPU 0)"
-    )
+    parser.add_argument("name", type=str, nargs="?", default=None, help="WandB run name (optional)")
+    parser.add_argument("--task", type=str, default="age_group", help="Task to run (age_group or sex)")
+    parser.add_argument("--cuda", type=int, default=2, help="CUDA device to use (e.g., 0 for GPU 0)")
     parser.add_argument(
         "--wandb",
         type=lambda x: (str(x).lower() == "true"),
@@ -474,13 +412,9 @@ def CLIP_tsne_visualization_4targets(model, dataloader, config):
             # Get image embeddings from the CLIP model
             # Ensure this path matches how you get the final embeddings
             # before the similarity calculation in your CLIP forward pass
-            image_features = model.image_encoder(fmri_sequence).view(
-                fmri_sequence.size(0), -1
-            )
+            image_features = model.image_encoder(fmri_sequence).view(fmri_sequence.size(0), -1)
             image_embeddings = model.image_projection(image_features)
-            image_embeddings = F.normalize(
-                image_embeddings, dim=-1
-            )  # Normalize as done in CLIP
+            image_embeddings = F.normalize(image_embeddings, dim=-1)  # Normalize as done in CLIP
 
             all_embeddings.append(image_embeddings.cpu().numpy())
 
@@ -499,9 +433,7 @@ def CLIP_tsne_visualization_4targets(model, dataloader, config):
     # 2. Create combined labels
     combined_labels_list = []
     for i in range(len(all_sex_labels)):
-        sex = all_sex_labels[
-            i
-        ]  # 0 for Female, 1 for Male (based on argmax of [1,0] vs [0,1])
+        sex = all_sex_labels[i]  # 0 for Female, 1 for Male (based on argmax of [1,0] vs [0,1])
         age = all_age_labels[i]  # 0 for Young (<69), 1 for Old (>78)
 
         if sex == 0 and age == 0:

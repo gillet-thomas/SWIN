@@ -13,15 +13,9 @@ from src.Trainer import Trainer
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train or Evaluate fMRI Model")
-    parser.add_argument(
-        "name", type=str, nargs="?", default=None, help="WandB run name (optional)"
-    )
-    parser.add_argument(
-        "--task", type=str, default="age_group", help="Task to run (age_group or sex)"
-    )
-    parser.add_argument(
-        "--cuda", type=int, default=2, help="CUDA device to use (e.g., 0 for GPU 0)"
-    )
+    parser.add_argument("name", type=str, nargs="?", default=None, help="WandB run name (optional)")
+    parser.add_argument("--task", type=str, default="age_group", help="Task to run (age_group or sex)")
+    parser.add_argument("--cuda", type=int, default=2, help="CUDA device to use (e.g., 0 for GPU 0)")
     parser.add_argument(
         "--wandb",
         type=lambda x: (str(x).lower() == "true"),
@@ -51,8 +45,8 @@ if __name__ == "__main__":
     )
 
     model = SWIN4D(config).to(device)
-    dataset_train = PainDataset(config, "train", generate_data=config["generate_data"])
-    dataset_val = PainDataset(config, "val", generate_data=False)
+    dataset_train = ADNISwiFTDataset(config, "train", generate_data=config["generate_data"])
+    dataset_val = ADNISwiFTDataset(config, "val", generate_data=False)
 
     trainer = Trainer(config, model, dataset_train, dataset_val)
     trainer.run()

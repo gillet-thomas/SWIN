@@ -23,21 +23,14 @@ class PainDataset(Dataset):
         if generate_data:
             self.generate_data()
 
-        with open(
-            f"{self.config['path_pickle_dataset']}/data_{self.mode}.pkl", "rb"
-        ) as f:
+        with open(f"{self.config['path_pickle_dataset']}/data_{self.mode}.pkl", "rb") as f:
             subjects = pickle.load(f)  # 78820 train samples and 8680 val sample
-            self.data = get_timepoints_pain(
-                subjects, limit=140, sequence_length=self.config["sequence_length"]
-            )
+            self.data = get_timepoints_pain(subjects, limit=140, sequence_length=self.config["sequence_length"])
             # self.data is subject, target, path_fmri, start_frame_idx
 
         if generate_data:
             img = nib.load(self.data[0][2]).dataobj[:, :, :, 70]
-            nib.save(
-                nib.Nifti1Image(img, np.eye(4)),
-                f"./results/visualization/sample_{self.mode}_pain.nii",
-            )
+            nib.save(nib.Nifti1Image(img, np.eye(4)), f"./results/visualization/sample_{self.mode}_pain.nii")
 
         print(f"Dataset initialized: {len(self.data)} {mode} samples")
 
@@ -52,11 +45,7 @@ class PainDataset(Dataset):
         meta_df["Gender"] = meta_df["Gender"].apply(lambda x: 0 if x == "F" else 1)
 
         # Shuffle subjects
-        all_subjects = (
-            meta_df.set_index("Subject")[["Gender", "Path_fMRI"]]
-            .apply(list, axis=1)
-            .to_dict()
-        )
+        all_subjects = meta_df.set_index("Subject")[["Gender", "Path_fMRI"]].apply(list, axis=1).to_dict()
         subjects_list = list(all_subjects.keys())
         np.random.shuffle(subjects_list)
 
@@ -81,20 +70,14 @@ class PainDataset(Dataset):
         print(f"Number of validation subjects with target 1: {num_val_target_1}")
 
         # Save to pickle files
-        save_datasets(
-            self.config["path_pickle_dataset"], all_subjects, train_ids, val_ids
-        )
+        save_datasets(self.config["path_pickle_dataset"], all_subjects, train_ids, val_ids)
         print("Datasets saved!")
 
     def __getitem__(self, idx):
-        subject, group, path_fmri, start_frame_idx = self.data[
-            idx
-        ]  # Types are str, torch.Tensor, str, str, int
+        subject, group, path_fmri, start_frame_idx = self.data[idx]  # Types are str, torch.Tensor, str, str, int
 
         target = torch.tensor(group)
-        fmri_data = load_and_process_fmri(
-            path_fmri, start_frame_idx, self.config["img_size"]
-        )
+        fmri_data = load_and_process_fmri(path_fmri, start_frame_idx, self.config["img_size"])
 
         return fmri_data, target
 

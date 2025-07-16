@@ -38,25 +38,15 @@ def generate_ig_maps():
 
         # only choose corrected samples
         if pred_int == data_target:  # Of the subjects that corrected
-            if (data_target == 0 and pred_prob <= 0.25) or (
-                data_target == 1 and pred_prob >= 0.75
-            ):
-                file_dir = os.path.join(
-                    save_dir, f'ADNI_{config["map_task"]}_target{target}'
-                )
+            if (data_target == 0 and pred_prob <= 0.25) or (data_target == 1 and pred_prob >= 0.75):
+                file_dir = os.path.join(save_dir, f'ADNI_{config["map_task"]}_target{target}')
                 os.makedirs(file_dir, exist_ok=True)
-                file_path = os.path.join(
-                    file_dir, f"{subj_name}_{start_frame_idx.item()}.pt"
-                )
+                file_path = os.path.join(file_dir, f"{subj_name}_{start_frame_idx.item()}.pt")
                 if not os.path.exists(file_path):
                     # baseline = torch.zeros_like(data_fmri)
-                    baseline = torch.mean(
-                        data_fmri, dim=(2, 3, 4, 5), keepdim=True
-                    ).expand_as(data_fmri)
+                    baseline = torch.mean(data_fmri, dim=(2, 3, 4, 5), keepdim=True).expand_as(data_fmri)
                     # result = noise_tunnel.attribute(data_fmri, baselines=baseline, target=None, **kwargs)
-                    result = gradient_shap.attribute(
-                        data_fmri, baselines=baseline, target=None, **kwargs
-                    )
+                    result = gradient_shap.attribute(data_fmri, baselines=baseline, target=None, **kwargs)
                     result = result.squeeze().cpu()  # 112 112 112 20
 
                     torch.save(result, file_path)
@@ -116,9 +106,7 @@ def create_custom_colormap():
 
 
 # Method 1: Symmetric threshold visualization
-def visualize_bidirectional_attributions(
-    nifti_mean_ig_map, MNI152, save_dir, config, target, threshold=0.3
-):
+def visualize_bidirectional_attributions(nifti_mean_ig_map, MNI152, save_dir, config, target, threshold=0.3):
     """
     Visualize both positive and negative attributions with different colors
     """
@@ -126,12 +114,8 @@ def visualize_bidirectional_attributions(
 
     # Get the data and compute symmetric thresholds
     data = nifti_mean_ig_map.get_fdata()
-    pos_threshold = (
-        np.percentile(data[data > 0], 100 - threshold * 100) if np.any(data > 0) else 0
-    )
-    neg_threshold = (
-        np.percentile(data[data < 0], threshold * 100) if np.any(data < 0) else 0
-    )
+    pos_threshold = np.percentile(data[data > 0], 100 - threshold * 100) if np.any(data > 0) else 0
+    neg_threshold = np.percentile(data[data < 0], threshold * 100) if np.any(data < 0) else 0
 
     print(f"Positive threshold: {pos_threshold:.4f}")
     print(f"Negative threshold: {neg_threshold:.4f}")
@@ -154,9 +138,7 @@ def visualize_bidirectional_attributions(
 
 
 # Method 2: Separate positive and negative maps
-def visualize_separate_pos_neg(
-    nifti_mean_ig_map, MNI152, save_dir, config, target, threshold=1
-):
+def visualize_separate_pos_neg(nifti_mean_ig_map, MNI152, save_dir, config, target, threshold=1):
     """
     Create separate visualizations for positive and negative attributions
     """
@@ -274,9 +256,7 @@ if __name__ == "__main__":
     # Collect IG maps
     maps = collect_ig_maps()
     means_of_maps = np.stack(maps, axis=3)
-    nifti_mean_ig_map = nib.Nifti2Image(
-        means_of_maps.mean(axis=3), affine=target_affine
-    )
+    nifti_mean_ig_map = nib.Nifti2Image(means_of_maps.mean(axis=3), affine=target_affine)
 
     # Visualize IG maps
     display = plotting.plot_stat_map(
@@ -293,14 +273,10 @@ if __name__ == "__main__":
     plt.savefig(
         f'{save_dir}/ADNI_{config["map_task"]}_target{target}_{timestamp}.png', dpi=300
     )  # dpi for higher resolution
-    print(
-        f"Saved '{save_dir}/ADNI_{config['map_task']}_target{target}_{timestamp}.png'"
-    )
+    print(f"Saved '{save_dir}/ADNI_{config['map_task']}_target{target}_{timestamp}.png'")
 
     # Method 1: Bidirectional with custom colormap
-    display = visualize_bidirectional_attributions(
-        nifti_mean_ig_map, MNI152, save_dir, config, target, threshold=0.2
-    )
+    display = visualize_bidirectional_attributions(nifti_mean_ig_map, MNI152, save_dir, config, target, threshold=0.2)
     timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
     plt.savefig(
         f'{save_dir}/AADNI_{config["map_task"]}_target{target}_bidirectional_{timestamp}.png',
@@ -309,9 +285,7 @@ if __name__ == "__main__":
     )
 
     # Method 2: Separate positive and negative plots
-    fig = visualize_separate_pos_neg(
-        nifti_mean_ig_map, MNI152, save_dir, config, target, threshold=2
-    )
+    fig = visualize_separate_pos_neg(nifti_mean_ig_map, MNI152, save_dir, config, target, threshold=2)
     plt.savefig(
         f'{save_dir}/AADNI_{config["map_task"]}_target{target}_separate_{timestamp}.png',
         dpi=300,

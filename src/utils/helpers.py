@@ -28,9 +28,7 @@ def get_timepoints_adni(subjects, limit=140, sequence_length=20):
     starting_timepoints = np.arange(0, limit, sequence_length)
     for _, (subject_name, group, path_fmri) in subjects.items():
         for start_frame_idx in starting_timepoints:
-            data.append(
-                (subject_name, group, path_fmri, start_frame_idx)
-            )  # add start_frame_idx column
+            data.append((subject_name, group, path_fmri, start_frame_idx))  # add start_frame_idx column
 
     return data
 
@@ -41,9 +39,18 @@ def get_timepoints_pain(subjects, limit=140, sequence_length=20):
     starting_timepoints = np.arange(0, limit, sequence_length)
     for subject_name, (group, path_fmri) in subjects.items():
         for start_frame_idx in starting_timepoints:
-            data.append(
-                (subject_name, group, path_fmri, start_frame_idx)
-            )  # add start_frame_idx column
+            data.append((subject_name, group, path_fmri, start_frame_idx))  # add start_frame_idx column
+
+    return data
+
+
+def get_timepoints_clip(subjects, limit=140, sequence_length=20):
+    data = []
+
+    starting_timepoints = np.arange(0, limit, sequence_length)
+    for _, (subject_name, age, sex, path_fmri) in subjects.items():
+        for start_frame_idx in starting_timepoints:
+            data.append((subject_name, path_fmri, age, sex, start_frame_idx))
 
     return data
 
@@ -52,13 +59,9 @@ def load_and_process_fmri(path_fmri, start_frame_idx, img_size):
     fmri_img = nib.load(path_fmri)
     fmri_data = fmri_img.dataobj[:, :, :, start_frame_idx : start_frame_idx + 20]
     fmri_data = pad_4d(fmri_data, img_size)  # Pad to 120x120x120x20
-    fmri_data = (fmri_data - fmri_data.min()) / (
-        fmri_data.max() - fmri_data.min() + 1e-8
-    )
+    fmri_data = (fmri_data - fmri_data.min()) / (fmri_data.max() - fmri_data.min() + 1e-8)
     # fmri_data = (fmri_data - fmri_data.mean()) / (fmri_data.std() + 1e-8)  # Normalize, add 1e-8 to avoid division by zero
-    fmri_data = fmri_data.unsqueeze(
-        0
-    )  # Add channel dimension, now shape is (1, 120, 120, 120, 20)
+    fmri_data = fmri_data.unsqueeze(0)  # Add channel dimension, now shape is (1, 120, 120, 120, 20)
     return fmri_data
 
 
