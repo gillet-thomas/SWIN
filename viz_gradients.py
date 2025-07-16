@@ -196,7 +196,7 @@ if __name__ == "__main__":
     target = 0
     generate_maps = True
     max_iter = 50
-    save_dir = os.path.join(os.getcwd(), "visualization/gradients")
+    save_dir = os.path.join(os.getcwd(), "results/visualization/gradients")
 
     # Load dataset
     best_model_path = config[f'best_swin_{config["map_task"]}']

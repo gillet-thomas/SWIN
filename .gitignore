@@ -3,23 +3,24 @@ metadata/
 
 
 output/
-results/
-data/
+results/runs/
+results/best_models/
+*.pkl
+*.csv
+pickle_dataset/
 python/
 example/
 
 .neptune
 .vscode
 wandb
+*.pt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
 .github
-
-# C extensions
-*.so
 
 # Distribution / packaging
 .Python
@@ -39,24 +40,6 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
-
-# Lightning /research  
-test_tube_exp/
-tests/tests_tt_dir/
-tests/save_dir
-default/   
-data/
-test_tube_logs/
-test_tube_data/
-datasets/
-model_weights/
-tests/save_dir  
-tests/tests_tt_dir/
-processed/
-raw/
-bash/
-output/
-wandb/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -84,20 +67,6 @@ coverage.xml
 *.mo
 *.pot
 
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-
-# Flask stuff:
-instance/
-.webassets-cache
-
-# Scrapy stuff:
-.scrapy
-
-# Sphinx documentation
-docs/_build/
 
 # PyBuilder
 target/
@@ -107,12 +76,6 @@ target/
 
 # pyenv
 .python-version
-
-# celery beat schedule file
-celerybeat-schedule
-
-# SageMath parsed files
-*.sage.py
 
 # Environments
 .env
@@ -127,15 +90,6 @@ venv.bak/
 .spyderproject
 .spyproject
 
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
-# mypy
-.mypy_cache/
-
 # IDEs
 .idea
 .vscode
@@ -145,7 +99,7 @@ lightning_logs/
 MNIST
 .DS_Store
 
-*.pt
+
 <<<<<<< HEAD
 =======
 

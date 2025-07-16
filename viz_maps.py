@@ -16,7 +16,7 @@ from src.data.DatasetPain import PainDataset
 from src.models.SWIN4D import SWIN4D
 
 
-# Generate tsne/umap plot and save it 
+# Generate tsne/umap plot and save it
 def plot_embeddings(model, dataloader, config, mode):
     all_embeddings = []
     all_labels = []
@@ -67,7 +67,7 @@ def plot_embeddings(model, dataloader, config, mode):
     plt.ylabel(f"{method.upper()} Dimension 2")
 
     # Save the plot
-    embedding_plot_dir = "./visualization/maps"
+    embedding_plot_dir = "./results/visualization/maps"
     os.makedirs(embedding_plot_dir, exist_ok=True)
 
     file_name = get_file_name(method, mode, param)
@@ -75,6 +75,7 @@ def plot_embeddings(model, dataloader, config, mode):
 
     plt.savefig(embedding_plot_path, dpi=300)
     print(f"{method.upper()} plot saved to {embedding_plot_path}")
+
 
 # Generate file name based on task
 def get_file_name(method, mode, param=None):

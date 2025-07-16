@@ -56,7 +56,7 @@ class Trainer:
 
     def run(self):
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        path = f"./results/{timestamp}"
+        path = f"./results/runs/{timestamp}"
         os.mkdir(path) if not os.path.exists(path) else None
 
         print(f"Running on device: {self.device}")
@@ -64,7 +64,7 @@ class Trainer:
             self.train(epoch)
             self.validate(epoch)
             torch.save(self.model.state_dict(), f"{path}/model-e{epoch}.pth")
-            torch.save(self.model.state_dict(), f"./results/last_model.pth")
+            torch.save(self.model.state_dict(), f"./results/runs/last_model.pth")
             print(f"MODEL SAVED to .{path}/model-e{epoch}.pth")
 
     def train(self, epoch):

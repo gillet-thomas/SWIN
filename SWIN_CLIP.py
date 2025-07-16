@@ -19,6 +19,7 @@ from tqdm import tqdm
 import wandb
 from src.models.mlp import mlpv1
 from src.models.swin4d_transformer_ver7 import SwinTransformer4D
+from src.utils.helpers import load_and_process_fmri, get_timepoints, save_datasets, save_subjects
 
 
 class ADNISwiFTDataset(Dataset):
@@ -33,11 +34,12 @@ class ADNISwiFTDataset(Dataset):
 
         with open(f"{self.config['path_pickle_dataset']}/data_{self.mode}.pkl", "rb") as f:
             subjects = pickle.load(f)
-            self.data = self.get_timepoints(subjects)  # subject, target, path_fmri, start_frame_idx
+            self.data = get_timepoints(subjects, sequence_length=self.config["sequence_length"])
+            # self.data is subject, target, path_fmri, start_frame_idx
 
         if generate_data:
             img = nib.load(self.data[0][1]).dataobj[:, :, :, 70]
-            nib.save(nib.Nifti1Image(img, np.eye(4)), f"./visualization/sample_{self.mode}_adni.nii")
+            nib.save(nib.Nifti1Image(img, np.eye(4)), f"./results/visualization/sample_{self.mode}_adni.nii")
 
         print(f"number of {self.mode} subj: {len(subjects)}")
         print(f"length of {self.mode} samples: {len(self.data)}")
@@ -73,17 +75,6 @@ class ADNISwiFTDataset(Dataset):
         val_ids = subjects_list[num_train_subjects : num_train_subjects + num_val_subjects]
         test_ids = subjects_list[num_train_subjects + num_val_subjects :]
 
-        # Save to pickle files
-        with open(f"{self.config['path_pickle_dataset']}/data_train.pkl", "wb") as f:
-            subjects = {id: all_subjects[id] for id in train_ids}
-            pickle.dump(subjects, f)
-        with open(f"{self.config['path_pickle_dataset']}/data_val.pkl", "wb") as f:
-            subjects = {id: all_subjects[id] for id in val_ids}
-            pickle.dump(subjects, f)
-        with open(f"{self.config['path_pickle_dataset']}/data_test.pkl", "wb") as f:
-            subjects = {id: all_subjects[id] for id in test_ids}
-            pickle.dump(subjects, f)
-
         # num_train_target_0 = len([id for id in train_ids if all_subjects[id][1] == 0])
         # num_train_target_1 = len([id for id in train_ids if all_subjects[id][1] == 1])
         # print(f"Number of train subjects with target 0: {num_train_target_0}")
@@ -99,55 +90,17 @@ class ADNISwiFTDataset(Dataset):
         # print(f"Number of test subjects with target 0: {num_test_target_0}")
         # print(f"Number of test subjects with target 1: {num_test_target_1}")
 
-        # Save subjects to txt files
-        with open(f"{self.config['path_pickle_dataset']}/train.txt", "w") as f:
-            for id in train_ids:
-                f.write(f"{id}\n")
-        with open(f"{self.config['path_pickle_dataset']}/val.txt", "w") as f:
-            for id in val_ids:
-                f.write(f"{id}\n")
-        with open(f"{self.config['path_pickle_dataset']}/test.txt", "w") as f:
-            for id in test_ids:
-                f.write(f"{id}\n")
-
+        # Save datasets and subjects
+        save_datasets(self.config["path_pickle_dataset"], all_subjects, train_ids, val_ids, test_ids)
+        save_subjects(self.config["path_pickle_dataset"], train_ids, val_ids, test_ids)
         print("Datasets saved!")
-
-    def get_timepoints(self, subjects):
-        data = []
-
-        starting_timepoints = np.arange(0, 140, self.config["sequence_length"])
-        for _, (subject_name, age, sex, path_fmri) in subjects.items():
-            for start_frame_idx in starting_timepoints:
-                data.append((subject_name, path_fmri, age, sex, start_frame_idx))
-
-        return data
-
-    def pad_4d(self, fmri_data):
-        background_value = fmri_data[0, 0, 0]  # Find background value
-        padded_volume = np.full(self.config["img_size"], background_value, dtype=fmri_data.dtype)
-
-        pad_x = (self.config["img_size"][0] - fmri_data.shape[0]) // 2
-        pad_y = (self.config["img_size"][1] - fmri_data.shape[1]) // 2
-        pad_z = (self.config["img_size"][2] - fmri_data.shape[2]) // 2
-
-        padded_volume[
-            pad_x : pad_x + fmri_data.shape[0], pad_y : pad_y + fmri_data.shape[1], pad_z : pad_z + fmri_data.shape[2]
-        ] = fmri_data
-
-        return torch.tensor(padded_volume, dtype=torch.float32)
 
     def __getitem__(self, index):
         # Unpack the data tuple for one sequence
         subject_name, path_fmri, age, sex, start_frame_idx = self.data[index]
         sex_one_hot = torch.tensor([1.0, 0.0]) if sex == 0 else torch.tensor([0.0, 1.0])
 
-        fmri_img = nib.load(path_fmri)
-        fmri_data = fmri_img.dataobj[:, :, :, start_frame_idx : start_frame_idx + 20]
-        fmri_data = self.pad_4d(fmri_data)  # Pad to 120x120x120x20
-        fmri_data = (fmri_data - fmri_data.min()) / (fmri_data.max() - fmri_data.min() + 1e-8)
-        # fmri_data = (fmri_data - fmri_data.mean()) / (fmri_data.std() + 1e-8)  # Normalize, add 1e-8 to avoid division by zero
-        fmri_data = fmri_data.unsqueeze(0)  # Add channel dimension, now shape is (1, 120, 120, 120, 20)
-        # print("Min max and mean of fmri_data:", fmri_data.min(), fmri_data.max(), fmri_data.mean())
+        fmri_data = load_and_process_fmri(path_fmri, start_frame_idx, self.config["img_size"])
 
         return fmri_data, sex_one_hot, age
 
@@ -300,7 +253,7 @@ class Trainer:
 
     def run(self):
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        path = f"./results/{timestamp}"
+        path = f"./results/runs/{timestamp}"
         os.mkdir(path) if not os.path.exists(path) else None
 
         print(f"Running on device: {self.device}")
@@ -308,7 +261,7 @@ class Trainer:
             self.train(epoch)
             self.validate(epoch)
             torch.save(self.model.state_dict(), f"{path}/model-e{epoch}.pth")
-            torch.save(self.model.state_dict(), f"./results/last_model.pth")
+            torch.save(self.model.state_dict(), f"./results/runs/last_model.pth")
             print(f"MODEL SAVED to .{path}/model-e{epoch}.pth")
 
     def train(self, epoch):
