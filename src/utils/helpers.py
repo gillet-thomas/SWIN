@@ -3,18 +3,18 @@ import torch
 
 
 def pad_4d(fmri_data, img_size):
-    background_value = fmri_data[0,0,0] # Find background value
+    background_value = fmri_data[0, 0, 0]  # Find background value
     padded_volume = np.full(img_size, background_value, dtype=fmri_data.dtype)
 
     pad_x = (img_size[0] - fmri_data.shape[0]) // 2
     pad_y = (img_size[1] - fmri_data.shape[1]) // 2
     pad_z = (img_size[2] - fmri_data.shape[2]) // 2
 
-    padded_volume[pad_x : pad_x + fmri_data.shape[0],
-                    pad_y : pad_y + fmri_data.shape[1],
-                    pad_z : pad_z + fmri_data.shape[2]] = fmri_data
+    padded_volume[
+        pad_x : pad_x + fmri_data.shape[0], pad_y : pad_y + fmri_data.shape[1], pad_z : pad_z + fmri_data.shape[2]
+    ] = fmri_data
 
-    return torch.tensor(padded_volume, dtype=torch.float32) 
+    return torch.tensor(padded_volume, dtype=torch.float32)
 
 
 def get_timepoints(subjects, limit=140, sequence_length=20):
@@ -27,6 +27,7 @@ def get_timepoints(subjects, limit=140, sequence_length=20):
 
     return data
 
+
 def load_and_process_fmri(path_fmri, start_frame_idx, img_size):
     fmri_img = nib.load(path_fmri)
     fmri_data = fmri_img.dataobj[:, :, :, start_frame_idx : start_frame_idx + 20]
@@ -35,6 +36,7 @@ def load_and_process_fmri(path_fmri, start_frame_idx, img_size):
     # fmri_data = (fmri_data - fmri_data.mean()) / (fmri_data.std() + 1e-8)  # Normalize, add 1e-8 to avoid division by zero
     fmri_data = fmri_data.unsqueeze(0)  # Add channel dimension, now shape is (1, 120, 120, 120, 20)
     return fmri_data
+
 
 def save_datasets(path_pickle_dataset, all_subjects, train_ids, val_ids, test_ids=None):
     with open(f"{path_pickle_dataset}/data_train.pkl", "wb") as f:
@@ -47,6 +49,7 @@ def save_datasets(path_pickle_dataset, all_subjects, train_ids, val_ids, test_id
         with open(f"{path_pickle_dataset}/data_test.pkl", "wb") as f:
             subjects = {id: all_subjects[id] for id in test_ids}
             pickle.dump(subjects, f)
+
 
 def save_subjects(path_pickle_dataset, train_ids, val_ids, test_ids=None):
     with open(f"{path_pickle_dataset}/train.txt", "w") as f:
