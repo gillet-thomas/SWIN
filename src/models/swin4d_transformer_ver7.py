@@ -903,7 +903,6 @@ class PatchEmbed(nn.Module):
         self.norm = norm_layer(embed_dim) if norm_layer else nn.Identity()
 
     def forward(self, x):
-        torch.cuda.nvtx.range_push("PatchEmbed")
         B, C, H, W, D, T = x.shape
         assert H == self.img_size[0], f"Input image height ({H}) doesn't match model ({self.img_size[0]})."
         assert W == self.img_size[1], f"Input image width ({W}) doesn't match model ({self.img_size[1]})."
@@ -912,7 +911,6 @@ class PatchEmbed(nn.Module):
         if self.flatten:
             x = x.flatten(2).transpose(1, 2)  # BCHW -> BNC
         x = self.norm(x)
-        torch.cuda.nvtx.range_pop()
         return x
 
     def proj(self, x):
