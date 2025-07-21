@@ -8,7 +8,6 @@ on: [push, pull_request]
 
 env:
   REPO_NAME: swin # Change to Docker Hub repository
-  REPOSITORY: ${{ secrets.DOCKER_USERNAME }}/${{ env.REPO_NAME }}
 
 jobs:
   push_to_registry:
@@ -35,7 +34,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REPOSITORY }}
+          images: ${{ secrets.DOCKER_USERNAME }}/${{ env.REPO_NAME }}
 
       - name: Build and push Docker image
         id: push
@@ -55,6 +54,6 @@ jobs:
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v2
         with:
-          subject-name: index.docker.io/${{ env.REPOSITORY }}
+          subject-name: index.docker.io/${{ secrets.DOCKER_USERNAME }}/${{ env.REPO_NAME }}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
