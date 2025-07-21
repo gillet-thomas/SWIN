@@ -23,7 +23,6 @@ def parse_args():
         default=True,
         help="Enable Weights and Biases (WandB) tracking",
     )
-    print("Hello")
     return parser.parse_args()
 
 
