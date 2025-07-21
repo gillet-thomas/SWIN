@@ -20,7 +20,6 @@ wandb
 __pycache__/
 *.py[cod]
 *$py.class
-.github
 
 # Distribution / packaging
 .Python
