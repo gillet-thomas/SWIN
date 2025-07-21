@@ -20,7 +20,7 @@ class ADNISwiFTDataset(Dataset):
         self.config = config
         self.mode = mode
         self.train = True if mode == "train" else False
-        print("Hello")
+        # print("Hello")
 
         if generate_data:
             subjects = self.generate_data()
