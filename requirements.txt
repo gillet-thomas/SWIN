@@ -1,4 +1,4 @@
-captum==0.8.0
+# captum==0.8.0 # for viz_gradients, don't need it
 einops==0.8.1
 fastapi==0.116.1
 matplotlib==3.10.3
@@ -9,6 +9,7 @@ numpy==2.3.1
 pandas==2.3.1
 pydantic==2.11.7
 pytorch_lightning==2.5.2
+python-multipart==0.0.18
 pytz==2024.1
 PyYAML==6.0.2
 scikit_learn==1.7.0
