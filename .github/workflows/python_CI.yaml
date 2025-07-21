@@ -29,7 +29,7 @@ jobs:
     - name: Format code with black # Already done in pre-commit hooks
       run: black . --line-length 119 --check --diff
     - name: Sort imports PEP8 guidelines with isort # Already done in pre-commit hooks
-      working-directory: SWIN/SWIN/
+      working-directory: .
       run: isort . --profile=black --check-only --diff
     - name: Test with pytest
       run: pytest
