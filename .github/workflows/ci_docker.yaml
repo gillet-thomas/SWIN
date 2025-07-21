@@ -44,6 +44,7 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/${{ env.REPO_NAME }}:latest
+          # tags: ${{ steps.meta.outputs.tags }} # will use branch name
           labels: ${{ steps.meta.outputs.labels }}
 
       - name: Print tags
