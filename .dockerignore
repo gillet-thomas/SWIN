@@ -1,0 +1,37 @@
+# Version control / build context
+.git/
+Dockerfile
+contrib/
+
+# Temporary & editor files
+*~
+*#
+.#*
+.DS_Store
+Thumbs.db
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+env/
+venv/
+
+# Notebooks & logs (optional)
+*.ipynb
+*.log
+logs/
+
+# Model results (keep only specific)
+results/
+!results/runs/2025-06-27_08-29-36/model-e28.pth
+
+# Large data files
+*.pkl
+*.csv
+
+# Project-specific
+visualization/
+wandb/
