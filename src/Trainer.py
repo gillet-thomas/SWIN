@@ -1,6 +1,7 @@
 import datetime
 import os
 
+import mlflow
 import torch
 import torch.nn as nn
 from tqdm import tqdm
@@ -66,6 +67,8 @@ class Trainer:
             torch.save(self.model.state_dict(), f"{path}/model-e{epoch}.pth")
             torch.save(self.model.state_dict(), f"./results/runs/last_model.pth")
             print(f"MODEL SAVED to .{path}/model-e{epoch}.pth")
+            # wandb.log_model(path=f"./results/runs/last_model.pth", name=f"last_swin_model_{epoch}")
+            # mlflow.pytorch.log_model(self.model, name="swin_model")
 
     def train(self, epoch):
         self.model.train()
@@ -108,6 +111,17 @@ class Trainer:
                         "learning_rate": lr,
                     }
                 )
+                # mlflow.log_metrics(
+                #     {
+                #         "epoch": epoch,
+                #         "batch": i,
+                #         "train_loss": avg_loss,
+                #         "train_accuracy": accuracy,
+                #         "learning_rate": lr,
+                #     },
+                #     step=epoch,
+                # )
+
                 correct, total, running_loss = 0, 0, 0.0
 
     def validate(self, epoch):
