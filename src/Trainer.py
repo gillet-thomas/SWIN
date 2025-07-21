@@ -1,12 +1,12 @@
 import datetime
 import os
 
+import mlflow
 import torch
 import torch.nn as nn
 from tqdm import tqdm
 
 import wandb
-import mlflow
 
 
 class Trainer:
@@ -70,8 +70,6 @@ class Trainer:
             # wandb.log_model(path=f"./results/runs/last_model.pth", name=f"last_swin_model_{epoch}")
             # mlflow.pytorch.log_model(self.model, name="swin_model")
 
-
-
     def train(self, epoch):
         self.model.train()
         running_loss, correct, total = 0.0, 0, 0
@@ -123,7 +121,7 @@ class Trainer:
                 #     },
                 #     step=epoch,
                 # )
-               
+
                 correct, total, running_loss = 0, 0, 0.0
 
     def validate(self, epoch):

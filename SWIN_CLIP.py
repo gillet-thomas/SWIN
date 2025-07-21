@@ -19,8 +19,12 @@ from tqdm import tqdm
 import wandb
 from src.models.mlp import clf_mlpv1
 from src.models.swin4d_transformer_ver7 import SwinTransformer4D
-from src.utils.helpers import (get_timepoints_clip, load_and_process_fmri,
-                               save_datasets, save_subjects)
+from src.utils.helpers import (
+    get_timepoints_clip,
+    load_and_process_fmri,
+    save_datasets,
+    save_subjects,
+)
 
 
 class ADNISwiFTDataset(Dataset):

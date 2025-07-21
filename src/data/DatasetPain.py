@@ -6,8 +6,7 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 
-from src.utils.helpers import (get_timepoints_pain, load_and_process_fmri,
-                               save_datasets)
+from src.utils.helpers import get_timepoints_pain, load_and_process_fmri, save_datasets
 
 
 # Pain study Marian Dataset

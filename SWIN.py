@@ -1,10 +1,10 @@
 import argparse
 
+import mlflow
 import numpy as np
 import torch
 import yaml
 
-import mlflow
 import wandb
 from src.data.DatasetADNI import ADNISwiFTDataset
 from src.data.DatasetPain import PainDataset

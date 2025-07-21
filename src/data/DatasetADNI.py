@@ -6,8 +6,12 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 
-from src.utils.helpers import (get_timepoints_adni, load_and_process_fmri,
-                               save_datasets, save_subjects)
+from src.utils.helpers import (
+    get_timepoints_adni,
+    load_and_process_fmri,
+    save_datasets,
+    save_subjects,
+)
 
 
 class ADNISwiFTDataset(Dataset):
