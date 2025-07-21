@@ -25,11 +25,14 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install black isort pytest
-        pip install -r requirements.txt
     - name: Format code with black # Already done in pre-commit hooks
       run: black . --line-length 119 --check --diff
+    - name: Show current working directory
+      run: pwd
+    - name: List files in directory
+      run: ls -la
     - name: Sort imports PEP8 guidelines with isort # Already done in pre-commit hooks
-      working-directory: SWIN
       run: isort . --profile=black --check-only --diff
+
     - name: Test with pytest
       run: pytest
