@@ -1,4 +1,4 @@
-FROM python:alpine3.22
+FROM python:3.12-slim
 
 # Set working directory (create it if it doesn't exist)
 WORKDIR /code
@@ -6,7 +6,7 @@ WORKDIR /code
 # Copy requirements.txt
 COPY ./requirements.txt /code/requirements.txt
 
-# Install dependencies, --no-cache-dir to avoid caching 
+# Install dependencies, --no-cache-dir to avoid caching
 RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
 # Copy app files

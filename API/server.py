@@ -1,18 +1,19 @@
+import os
+import tempfile
+
 import nibabel as nib
 import numpy as np
 import torch
 import yaml
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from src.models.SWIN4D import SWIN4D
 
 config = yaml.safe_load(open("configs/config.yaml", "r"))
-path_adni_fmri = "/mnt/data/iai/Projects/ABCDE/fmris/ADNI_rsfmri/Project/data/preprocessed/136_S_4993_I342514/wauI342514_Resting_State_fMRI_136_S_4993.nii"
-
 app = FastAPI()
 model = SWIN4D(config)
-model.load_state_dict(torch.load(config["best_swin_age_group"]))
+model.load_state_dict(torch.load(config["best_swin_age_group"], map_location=torch.device("cpu")))
 model.eval()
 
 
@@ -46,12 +47,14 @@ class PredictionResponse(BaseModel):
 
 @app.post("/predict_age", response_model=PredictionResponse)
 def predict_age(fmri_path: PredictionPath):
+
     try:
         fmri_img = nib.load(fmri_path.path)
         fmri_data = fmri_img.dataobj[:, :, :, 70 : 70 + 20]
         fmri_data = pad_4d(fmri_data)  # Pad to 120x120x120x20
         fmri_data = (fmri_data - fmri_data.min()) / (fmri_data.max() - fmri_data.min() + 1e-8)
         fmri_data = fmri_data.unsqueeze(0).unsqueeze(0)
+        fmri_data = fmri_data.to(torch.device("cpu"))
 
         with torch.no_grad():
             output = model(fmri_data)
@@ -60,6 +63,7 @@ def predict_age(fmri_path: PredictionPath):
         predicted_labels = (torch.sigmoid(output) >= 0.5).long()
 
         age_group = "Young" if predicted_labels == 0 else "Old"
+
         return {"age_group": age_group}
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"File not found at: {fmri_path}")
@@ -70,5 +74,42 @@ def predict_age(fmri_path: PredictionPath):
 
 @app.post("/predict_age_default", response_model=PredictionResponse)
 def predict_age_default():
-    fmri_path = PredictionPath(path=path_adni_fmri)
+    fmri_path = PredictionPath(path="API/fmri.nii")
     return predict_age(fmri_path)
+
+
+@app.post("/predict_niftii")
+async def predict_niftii(nifti_file: UploadFile):
+
+    with tempfile.NamedTemporaryFile(suffix=".nii", delete=False) as tmp:
+        try:
+            # Save to a temporary file because nibabel needs a file path
+            contents = await nifti_file.read()
+            tmp.write(contents)
+
+            # Data loading and preprocessing
+            fmri_img = nib.load(tmp.name)
+            fmri_data = fmri_img.dataobj[:, :, :, 70 : 70 + 20]
+            fmri_data = pad_4d(fmri_data)  # Pad to 120x120x120x20
+            fmri_data = (fmri_data - fmri_data.min()) / (fmri_data.max() - fmri_data.min() + 1e-8)
+            fmri_data = fmri_data.unsqueeze(0).unsqueeze(0)
+            fmri_data = fmri_data.to(torch.device("cpu"))
+
+            with torch.no_grad():
+                output = model(fmri_data)
+
+            output = output.view(-1)  # for BCEWithLogitsLoss
+            predicted_labels = (torch.sigmoid(output) >= 0.5).long()
+
+            age_group = "Young" if predicted_labels == 0 else "Old"
+            return {"age_group": age_group}
+
+        except FileNotFoundError:
+            raise HTTPException(status_code=404, detail=f"File not found at: {nifti_file.filename}")
+        except Exception as e:
+            print(f"Prediction error: {e}")
+            raise HTTPException(status_code=500, detail=f"An error occurred during prediction: {e}")
+        finally:
+            if os.path.exists(tmp.name):
+                os.remove(tmp.name)
+                print(f"Temporary file removed: {tmp.name}")

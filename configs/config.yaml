@@ -17,13 +17,13 @@ csv_path_pain: /mnt/data/iai/Projects/ABCDE/fmris/CLIP_fmris/SwiFT/src/data/path
 # best_CLIP:  /mnt/data/iai/Projects/ABCDE/fmris/CLIP_fmris/SwiFT/results/runs/2025-07-02_15-44-05/model-e26.pth
 # best_swin_pain_age: /mnt/data/iai/Projects/ABCDE/fmris/CLIP_fmris/SwiFT/results/runs/2025-07-14_17-17-15/model-e57.pth
 # best_swin_pain_sex: /mnt/data/iai/Projects/ABCDE/fmris/CLIP_fmris/SwiFT/results/runs/2025-07-15_10-42-35/model-e21.pth
-best_swin_age_group: /mnt/data/iai/Projects/ABCDE/fmris/CLIP_fmris/SwiFT/results/best_models/best_swin_age_group.pth
-best_swin_sex: /mnt/data/iai/Projects/ABCDE/fmris/CLIP_fmris/SwiFT/results/best_models/best_swin_sex.pth
-best_swin_AD:  /mnt/data/iai/Projects/ABCDE/fmris/CLIP_fmris/SwiFT/results/best_models/best_swin_AD.pth
-best_swin_4targets: /mnt/data/iai/Projects/ABCDE/fmris/CLIP_fmris/SwiFT/results/best_models/best_swin_4targets.pth
-best_CLIP:  /mnt/data/iai/Projects/ABCDE/fmris/CLIP_fmris/SwiFT/results/best_models/best_CLIP.pth
-best_swin_pain_age: /mnt/data/iai/Projects/ABCDE/fmris/CLIP_fmris/SwiFT/results/best_models/best_swin_pain_age.pth
-best_swin_pain_sex: /mnt/data/iai/Projects/ABCDE/fmris/CLIP_fmris/SwiFT/results/best_models/best_swin_pain_sex.pth
+best_swin_age_group: results/best_models/best_swin_age_group.pth
+best_swin_sex: results/best_models/best_swin_sex.pth
+best_swin_AD:  results/best_models/best_swin_AD.pth
+best_swin_4targets: results/best_models/best_swin_4targets.pth
+best_CLIP:  results/best_models/best_CLIP.pth
+best_swin_pain_age: results/best_models/best_swin_pain_age.pth
+best_swin_pain_sex: results/best_models/best_swin_pain_sex.pth
 
 
 #! TRAINING
@@ -43,7 +43,7 @@ in_chans: 1
 embed_dim: 36
 window_size: [4, 4, 4, 4]
 first_window_size: [4, 4, 4, 4]
-patch_size: [7, 7, 7, 1] # [6, 6, 6, 1] 
+patch_size: [7, 7, 7, 1] # [6, 6, 6, 1]
 depths: [2, 2, 6, 2]
 num_heads: [3, 6, 12, 24]
 c_multiplier: 2

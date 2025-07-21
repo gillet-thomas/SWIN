@@ -25,8 +25,8 @@ venv/
 logs/
 
 # Model results (keep only specific)
-results/
-!results/runs/2025-06-27_08-29-36/model-e28.pth
+# results/
+# !results/runs/2025-06-27_08-29-36/model-e28.pth
 
 # Large data files
 *.pkl
