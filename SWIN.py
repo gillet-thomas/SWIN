@@ -4,6 +4,7 @@ import numpy as np
 import torch
 import yaml
 
+import mlflow
 import wandb
 from src.data.DatasetADNI import ADNISwiFTDataset
 from src.data.DatasetPain import PainDataset
@@ -44,9 +45,14 @@ if __name__ == "__main__":
         mode="online" if config["wandb_mode"] == "online" else "disabled",
     )
 
+    # mlflow.set_tracking_uri(uri="http://localhost:8080")
+    # mlflow.set_experiment(experiment_name="fMRI2Vec")
+    # mlflow.start_run(run_name=args.name)
+    # mlflow.log_params(config)
+
     model = SWIN4D(config).to(device)
-    dataset_train = ADNISwiFTDataset(config, "train", generate_data=config["generate_data"])
-    dataset_val = ADNISwiFTDataset(config, "val", generate_data=False)
+    dataset_train = PainDataset(config, "train", generate_data=config["generate_data"])
+    dataset_val = PainDataset(config, "val", generate_data=False)
 
     trainer = Trainer(config, model, dataset_train, dataset_val)
     trainer.run()
