@@ -1,10 +1,8 @@
-# GitHub recommends pinning actions to a commit SHA.
-# To get a newer version, you will need to update the SHA.
-# You can also reference a tag or branch, but the action may change without warning.
+name: Docker CD
 
-name: Publish Docker image
-
-on: [push, pull_request]
+on:
+  release:
+    types: [published]
 
 env:
   REPO_NAME: swin # Change to Docker Hub repository
@@ -12,7 +10,7 @@ env:
 jobs:
   push_to_registry:
 
-    name: Push Docker image to Docker Hub
+    name: Docker CD - Push image to Docker Hub
     runs-on: ubuntu-latest
     permissions:
       packages: write
