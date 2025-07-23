@@ -4,6 +4,7 @@ import nibabel as nib
 import numpy as np
 import pandas as pd
 import torch
+from monai.transforms import Compose, RandSpatialCropd
 from torch.utils.data import Dataset
 
 from src.utils.helpers import get_timepoints_pain, load_and_process_fmri, save_datasets
@@ -19,6 +20,14 @@ class PainDataset(Dataset):
         self.split_ratio = config["train_split"]
         self.dataset_path = f"./src/data/data_{mode}.pkl"
 
+        # Define MONAI transforms
+        self.apply_transform = config["apply_transform"]
+        self.transform = Compose(
+            [
+                RandSpatialCropd(keys="fmri", roi_size=[96, 96, 96, 20], random_size=False, random_center=True),
+            ]
+        )
+
         if generate_data:
             self.generate_data()
 
@@ -31,7 +40,8 @@ class PainDataset(Dataset):
             img = nib.load(self.data[0][2]).dataobj[:, :, :, 70]
             nib.save(nib.Nifti1Image(img, np.eye(4)), f"./results/visualization/sample_{self.mode}_pain.nii")
 
-        print(f"Dataset initialized: {len(self.data)} {mode} samples")
+        print(f"PainDataset number of {self.mode} subj: {len(subjects)}")
+        print(f"PainDataset length of {self.mode} samples: {len(self.data)}")
 
     def generate_data(self):
         # Load CSV file
@@ -77,6 +87,10 @@ class PainDataset(Dataset):
 
         target = torch.tensor(group)
         fmri_data = load_and_process_fmri(path_fmri, start_frame_idx, self.config["img_size"])
+
+        if self.apply_transform:
+            fmri_data = self.transform({"fmri": fmri_data})  # MONAI expected input as dict
+            fmri_data = fmri_data["fmri"]
 
         return fmri_data, target
 

@@ -4,6 +4,7 @@ import nibabel as nib
 import numpy as np
 import pandas as pd
 import torch
+from monai.transforms import Compose, RandSpatialCropd
 from torch.utils.data import Dataset
 
 from src.utils.helpers import (
@@ -20,7 +21,14 @@ class ADNISwiFTDataset(Dataset):
         self.config = config
         self.mode = mode
         self.train = True if mode == "train" else False
-        # print("Hello")
+
+        # Define MONAI transforms
+        self.apply_transform = config["apply_transform"]
+        self.transform = Compose(
+            [
+                RandSpatialCropd(keys="fmri", roi_size=[96, 96, 96, 20], random_size=False, random_center=True),
+            ]
+        )
 
         if generate_data:
             subjects = self.generate_data()
@@ -34,11 +42,8 @@ class ADNISwiFTDataset(Dataset):
             img = nib.load(self.data[0][2]).dataobj[:, :, :, 70]
             nib.save(nib.Nifti1Image(img, np.eye(4)), f"./results/visualization/sample_{self.mode}_adni.nii")
 
-        print(f"number of {self.mode} subj: {len(subjects)}")
-        print(f"length of {self.mode} samples: {len(self.data)}")
-        print(
-            f"ADNISwiFTDataset: Prepared {len(self.data)} sequences for {'training' if self.train else 'validation/testing'}."
-        )
+        print(f"ADNISwiFTDataset number of {self.mode} subj: {len(subjects)}")
+        print(f"ADNISwiFTDataset length of {self.mode} samples: {len(self.data)}")
 
     def generate_data(self):
         all_subjects = dict()
@@ -97,6 +102,10 @@ class ADNISwiFTDataset(Dataset):
 
         target = torch.tensor(0 if group == "AD" else 1)
         fmri_data = load_and_process_fmri(path_fmri, start_frame_idx, self.config["img_size"])
+
+        if self.apply_transform:
+            fmri_data = self.transform({"fmri": fmri_data})  # MONAI expected input as dict
+            fmri_data = fmri_data["fmri"]
 
         return fmri_data, target
 

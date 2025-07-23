@@ -1,5 +1,6 @@
 #! DATASET
 generate_data: True # Generate and save data to pickle
+apply_transform: False # Apply MONAI transform
 downstream_task: age_group # age_group or sex (no impact on internal logic)
 train_split: 0.7
 val_split: 0.15
@@ -30,7 +31,7 @@ best_swin_pain_sex: results/best_models/best_swin_pain_sex.pth
 seed: 42
 num_workers: 4
 
-epochs: 75
+epochs: 30
 batch_size: 8
 eval_batch_size: 1
 learning_rate: 0.00001
