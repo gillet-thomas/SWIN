@@ -8,12 +8,15 @@ import torch
 import yaml
 from fastapi import FastAPI, HTTPException, UploadFile
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from src.models.SWIN4D import SWIN4D
 
 config = yaml.safe_load(open("configs/config.yaml", "r"))
 app = FastAPI()
+app.mount("/API", StaticFiles(directory="API"))
+
 model_age = SWIN4D(config)
 model_age.load_state_dict(torch.load(config["best_swin_age_group"], map_location=torch.device("cpu")))
 model_age.eval()
@@ -112,13 +115,13 @@ async def predict_age(nifti_file: UploadFile):
 
     prediction = "Young" if sigmoid_probability else "Old"
     confidence = sigmoid_value if prediction == "Old" else 1 - sigmoid_value
-    gradients = f"/results/visualization/swin_2targets_age/ADNI_age_group_target{sigmoid_probability}_tsh10.png"
+    gradients_path = f"/API/ADNI_age_group_target{sigmoid_probability}_tsh10.png"
 
     return {
         "prediction": prediction,
         "confidence": round(confidence, 3),
         "raw_output": round(output.item(), 3),
-        "IntegratedGradients": gradients,
+        "IntegratedGradients": gradients_path,
     }
 
 
@@ -133,11 +136,11 @@ async def predict_sex(nifti_file: UploadFile):
 
     sex = "F" if sigmoid_probability else "M"
     confidence = sigmoid_value if sex == "M" else 1 - sigmoid_value
-    gradients = f"results/visualization/swin_2targets_sex/ADNI_sex_target{sigmoid_probability}_10.png"
+    gradients_path = f"API/ADNI_sex_target{sigmoid_probability}_tsh10.png"
 
     return {
         "prediction": sex,
         "confidence": round(confidence, 3),
         "raw_output": round(output.item(), 3),
-        "IntegratedGradients": gradients,
+        "IntegratedGradients": gradients_path,
     }
