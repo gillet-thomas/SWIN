@@ -1,8 +1,6 @@
 name: Docker CD
 
-on:
-  release:
-    types: [published]
+on: [push, pull_request]
 
 env:
   REPO_NAME: swin # Change to Docker Hub repository
