@@ -27,8 +27,8 @@ model_sex.load_state_dict(torch.load(config["best_swin_sex"], map_location=torch
 model_sex.eval()
 
 origins = [
-    "http://localhost",         # Browser localhost
-    "http://127.0.0.1",         # Alternative localhost
+    "http://localhost",  # Browser localhost
+    "http://127.0.0.1",  # Alternative localhost
 ]
 
 app.add_middleware(
@@ -38,6 +38,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 #! GET Routes
 @app.get("/")
