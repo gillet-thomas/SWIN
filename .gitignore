@@ -4,7 +4,6 @@ metadata/
 
 output/
 results/runs/
-results/best_models/
 *.pkl
 *.csv
 *.nii
