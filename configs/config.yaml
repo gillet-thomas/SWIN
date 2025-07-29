@@ -1,7 +1,7 @@
 #! DATASET
 generate_data: True # Generate and save data to pickle
 apply_transform: False # Apply MONAI transform
-downstream_task: age_group # age_group or sex (no impact on internal logic)
+downstream_task: AD # age_group or sex or AD
 train_split: 0.7
 val_split: 0.15
 test_split: 0.15
@@ -25,7 +25,6 @@ best_swin_4targets: results/best_models/best_swin_4targets.pth
 best_CLIP:  results/best_models/best_CLIP.pth
 best_swin_pain_age: results/best_models/best_swin_pain_age.pth
 best_swin_pain_sex: results/best_models/best_swin_pain_sex.pth
-
 
 #! TRAINING
 seed: 42

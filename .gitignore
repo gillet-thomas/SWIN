@@ -4,12 +4,15 @@ metadata/
 
 output/
 results/runs/
-*.pkl
+# *.pkl
 *.csv
 *.nii
-pickle_dataset/
 python/
 example/
+
+src/data/pickle_dataset/*
+!src/data/pickle_dataset/ADNI_*/
+
 
 .neptune
 .vscode

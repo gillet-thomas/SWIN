@@ -48,17 +48,24 @@ class ADNISwiFTDataset(Dataset):
     def generate_data(self):
         all_subjects = dict()
 
-        meta_df = pd.read_csv(self.config["csv_path_adni"], usecols=["ID", "Subject", "Group", "Path_fMRI_brain"])
+        meta_df = pd.read_csv(
+            self.config["csv_path_adni"], usecols=["ID", "Subject", "Group", "Sex", "Age", "Path_fMRI_brain"]
+        )
 
         # Filtering
         print(f"Filtering data for {self.config['downstream_task']} task...")
-        meta_df = meta_df[(meta_df["Group"] == "AD") | (meta_df["Group"] == "CN")]
-        # meta_df = meta_df[(meta_df['Age'] < 69) | (meta_df['Age'] > 78)]
-        # meta_df["age"] = meta_df["Age"].apply(lambda x: 0 if x < 69 else 1)
-        # meta_df["sex"] = meta_df["Sex"].apply(lambda x: 0 if x == 'F' else 1)
+
+        if self.config["downstream_task"] == "age_group":
+            meta_df = meta_df[(meta_df["Age"] < 69) | (meta_df["Age"] > 78)]
+            meta_df["Target"] = meta_df["Age"].apply(lambda x: 0 if x < 69 else 1)
+        elif self.config["downstream_task"] == "sex":
+            meta_df["Target"] = meta_df["Sex"].apply(lambda x: 0 if x == "F" else 1)
+        elif self.config["downstream_task"] == "AD":
+            meta_df = meta_df[(meta_df["Group"] == "AD") | (meta_df["Group"] == "CN")]
+            meta_df["Target"] = meta_df["Group"].apply(lambda x: 0 if x == "AD" else 1)
 
         # Shuffle subjects
-        all_subjects = meta_df.set_index("ID")[["Subject", "Group", "Path_fMRI_brain"]].apply(list, axis=1).to_dict()
+        all_subjects = meta_df.set_index("ID")[["Subject", "Target", "Path_fMRI_brain"]].apply(list, axis=1).to_dict()
         subjects_list = list(all_subjects.keys())
         np.random.shuffle(subjects_list)
 
@@ -72,24 +79,24 @@ class ADNISwiFTDataset(Dataset):
         val_ids = subjects_list[num_train_subjects : num_train_subjects + num_val_subjects]
         test_ids = subjects_list[num_train_subjects + num_val_subjects :]
 
-        num_train_target_0 = len([id for id in train_ids if all_subjects[id][1] == "CN"])
-        num_train_target_1 = len([id for id in train_ids if all_subjects[id][1] == "AD"])
-        print(f"Number of train subjects with target 0: {num_train_target_0}")
-        print(f"Number of train subjects with target 1: {num_train_target_1}")
-        total_samples = num_train_target_0 + num_train_target_1
-        weight_0 = total_samples / (2 * num_train_target_0)
-        weight_1 = total_samples / (2 * num_train_target_1)
-        self.training_class_weights = torch.tensor([weight_0, weight_1], dtype=torch.float32).to(self.config["device"])
+        # num_train_target_0 = len([id for id in train_ids if all_subjects[id][1] == "CN"])
+        # num_train_target_1 = len([id for id in train_ids if all_subjects[id][1] == "AD"])
+        # print(f"Number of train subjects with target 0: {num_train_target_0}")
+        # print(f"Number of train subjects with target 1: {num_train_target_1}")
+        # total_samples = num_train_target_0 + num_train_target_1
+        # weight_0 = total_samples / (2 * num_train_target_0)
+        # weight_1 = total_samples / (2 * num_train_target_1)
+        # self.training_class_weights = torch.tensor([weight_0, weight_1], dtype=torch.float32).to(self.config["device"])
 
-        num_val_target_0 = len([id for id in val_ids if all_subjects[id][1] == "CN"])
-        num_val_target_1 = len([id for id in val_ids if all_subjects[id][1] == "AD"])
-        print(f"Number of validation subjects with target 0: {num_val_target_0}")
-        print(f"Number of validation subjects with target 1: {num_val_target_1}")
+        # num_val_target_0 = len([id for id in val_ids if all_subjects[id][1] == "CN"])
+        # num_val_target_1 = len([id for id in val_ids if all_subjects[id][1] == "AD"])
+        # print(f"Number of validation subjects with target 0: {num_val_target_0}")
+        # print(f"Number of validation subjects with target 1: {num_val_target_1}")
 
-        num_test_target_0 = len([id for id in test_ids if all_subjects[id][1] == "CN"])
-        num_test_target_1 = len([id for id in test_ids if all_subjects[id][1] == "AD"])
-        print(f"Number of test subjects with target 0: {num_test_target_0}")
-        print(f"Number of test subjects with target 1: {num_test_target_1}")
+        # num_test_target_0 = len([id for id in test_ids if all_subjects[id][1] == "CN"])
+        # num_test_target_1 = len([id for id in test_ids if all_subjects[id][1] == "AD"])
+        # print(f"Number of test subjects with target 0: {num_test_target_0}")
+        # print(f"Number of test subjects with target 1: {num_test_target_1}")
 
         # Save datasets and subjects
         save_datasets(self.config["path_pickle_dataset"], all_subjects, train_ids, val_ids, test_ids)
@@ -98,9 +105,9 @@ class ADNISwiFTDataset(Dataset):
 
     def __getitem__(self, index):
         # Unpack the data tuple for one sequence
-        subject_name, group, path_fmri, start_frame_idx = self.data[index]
+        subject_name, target, path_fmri, start_frame_idx = self.data[index]
 
-        target = torch.tensor(0 if group == "AD" else 1)
+        target = torch.tensor(target)
         fmri_data = load_and_process_fmri(path_fmri, start_frame_idx, self.config["img_size"])
 
         if self.apply_transform:
