@@ -8,6 +8,7 @@ import torch
 import yaml
 from fastapi import FastAPI, HTTPException, UploadFile
 from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -25,6 +26,18 @@ model_sex = SWIN4D(config)
 model_sex.load_state_dict(torch.load(config["best_swin_sex"], map_location=torch.device("cpu")))
 model_sex.eval()
 
+origins = [
+    "http://localhost",         # Browser localhost
+    "http://127.0.0.1",         # Alternative localhost
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 #! GET Routes
 @app.get("/")
@@ -131,12 +144,12 @@ async def predict_sex(nifti_file: UploadFile):
     model_output = await load_and_predict(nifti_file, model_sex)
 
     output = model_output.view(-1)  # for BCEWithLogitsLoss
-    sigmoid_value = (sigmoid_value <= 0, 5)
-    sigmoid_probability = torch.sigmoid(output).item()
+    sigmoid_value = torch.sigmoid(output).item()
+    sigmoid_probability = int(sigmoid_value <= 0.5)
 
     sex = "F" if sigmoid_probability else "M"
     confidence = sigmoid_value if sex == "M" else 1 - sigmoid_value
-    gradients_path = f"API/ADNI_sex_target{sigmoid_probability}_tsh10.png"
+    gradients_path = f"/API/ADNI_sex_target{sigmoid_probability}_tsh10.png"
 
     return {
         "prediction": sex,
