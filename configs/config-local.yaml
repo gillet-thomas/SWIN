@@ -6,7 +6,7 @@ train_split: 0.7
 val_split: 0.15
 test_split: 0.15
 sequence_length: 20
-path_pickle_dataset: src/data/pickle_dataset
+path_pickle_dataset: src/data/pickle_dataset/ADNI_AD
 csv_path_adni: src/data/paths_dataset_adni.csv
 csv_path_pain: src/data/paths_dataset_pain.csv
 
