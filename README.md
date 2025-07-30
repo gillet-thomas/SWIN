@@ -26,6 +26,8 @@ This custom implementation of SwiFT offers the following:
     * **t-SNE & UMAP Visualization:** Integrated t-Distributed Stochastic Neighbor Embedding (t-SNE) and Uniform Manifold Approximation and Projection (UMAP) for visualizing high-dimensional model predictions.
     * **Integrated Gradients:** Simplified implementation compared to the original project, making it easier to apply for model interpretability.
 * **Contrastive Language–Image Pre-training:** Includes a standalone CLIP (contrastive learning) implementation for aligning paired modalities (e.g., age-gender).
+* **MLOps:** Added pre-commit hooks, GitHub Actions for CI/CD, and support for WandB, MLflow, ZenML, and multi-GPU training (DDP).
+* **Deployment:** FastAPI backend with Docker containerization and Docker Compose for full-stack app (Nginx frontend + SWIN backend).
 
 ---
 
@@ -34,7 +36,7 @@ This custom implementation of SwiFT offers the following:
 This SwiFT model was tested on the ADNI dataset, preprocessed and aligned to MNI space. Various classification tasks were conducted to evaluate the model's performance.
 
 1.  **Age Group Prediction:**
-    * **Task:** Classifying individuals into "young" (< 69 years old) and "old" (> 78 years old) age groups.
+    * **Task:** Classifying individuals into "young" (< 69 years old) and "old" (> 78 years old) age groups, corresponding to the 1st and 3rd quartiles, respectively.
     * **Performance:** Achieved 95.24% accuracy on the validation dataset.
 
 2.  **Gender Prediction:**
@@ -101,8 +103,8 @@ You can launch the full application with the following command:
 ```bash
 docker compose up --build
 ```
+After the services are up, you can access the application through your browser at http://localhost:80. This provides a nice interface to directly interact with the trained model.
 
-This provides a ready-to-use interface to interact with the trained model directly from your browser.
 ---
 
 ## 📊 Visualizations
