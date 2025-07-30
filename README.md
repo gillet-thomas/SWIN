@@ -25,7 +25,7 @@ This custom implementation of SwiFT offers the following:
 * **Advanced Visualization Tools:**
     * **t-SNE & UMAP Visualization:** Integrated t-Distributed Stochastic Neighbor Embedding (t-SNE) and Uniform Manifold Approximation and Projection (UMAP) for visualizing high-dimensional model predictions.
     * **Integrated Gradients:** Simplified implementation compared to the original project, making it easier to apply for model interpretability.
-* **Contrastive Language–Image Pre-training:** Includes a CLIP contrastive learning implementation for aligning paired modalities (e.g., age-gender).
+* **Contrastive Language–Image Pre-training:** Includes a standalone CLIP (contrastive learning) implementation for aligning paired modalities (e.g., age-gender).
 
 ---
 
@@ -65,9 +65,12 @@ Please create such a file first, then run the script with the `generate_data` co
 Once the data preprocessing is done, you can train the model using the following command:
 
 ```bash
-# You can choose between SWIN.py (default) or SWIN_CLIP.py (CLIP version)
-python SWIN.py
+conda env create -n swin_env -f configs/env.yaml
+conda activate swin_env
+pip install -r requirements.txt
+python SWIN.py # You can choose between SWIN.py (default) or SWIN_CLIP.py (CLIP version)
 ```
+
 
 Optional arguments for the training script:
 ```bash
@@ -83,6 +86,23 @@ python -m results.visualization.viz_maps
 python -m results.visualization.viz_gradients
 ```
 
+## 🐳 Docker
+
+If you prefer running the project using Docker, a Dockerfile is provided for launching a FastAPI backend server, accessible at http://localhost:8000. You can build and run the container with the following commands:
+```bash
+docker build -t swin_app .
+docker run -p 8000:8000 swin_app
+```
+
+### 🧩 Docker Compose (Frontend + Backend)
+
+A docker-compose.yaml file is also included, which sets up both the backend (FastAPI server) and a frontend interface (served with Nginx).
+You can launch the full application with the following command:
+```bash
+docker compose up --build
+```
+
+This provides a ready-to-use interface to interact with the trained model directly from your browser.
 ---
 
 ## 📊 Visualizations
@@ -96,15 +116,15 @@ These plots show the projection of the fMRI features learned by the Swin 4D mode
 <table align="center" style="border-collapse: collapse;">
   <tr>
     <td style="border: 1px solid #ccc; padding: 5px; text-align: center;">
-      <img src="/visualization/swin_2targets_age/tsne_age_group_train_50.png" width="" alt="t-SNE age group - Training set"/>
+      <img src="/results/visualization/swin_2targets_age/tsne_age_group_train_50.png" width="" alt="t-SNE age group - Training set"/>
       <figcaption style="font-size: 0.9em; margin-top: 5px;">t-SNE: Training Set</figcaption>
     </td>
     <td style="border: 1px solid #ccc; padding: 5px; text-align: center;">
-      <img src="/visualization/swin_2targets_age/tsne_age_group_val_50.png" width="" alt="t-SNE age group - Validation set"/>
+      <img src="/results/visualization/swin_2targets_age/tsne_age_group_val_50.png" width="" alt="t-SNE age group - Validation set"/>
       <figcaption style="font-size: 0.9em; margin-top: 5px;">t-SNE: Validation Set</figcaption>
     </td>
     <td style="border: 1px solid #ccc; padding: 5px; text-align: center;">
-      <img src="/visualization/swin_2targets_age/tsne_age_group_test_50.png" width="" alt="t-SNE age group - Test set"/>
+      <img src="/results/visualization/swin_2targets_age/tsne_age_group_test_50.png" width="" alt="t-SNE age group - Test set"/>
       <figcaption style="font-size: 0.9em; margin-top: 5px;">t-SNE: Test Set</figcaption>
     </td>
   </tr>
@@ -115,15 +135,15 @@ These plots show the projection of the fMRI features learned by the Swin 4D mode
 <table align="center" style="border-collapse: collapse;">
   <tr>
     <td style="border: 1px solid #ccc; padding: 5px; text-align: center;">
-      <img src="/visualization/swin_2targets_age/umap_age_group_train_100.png" width="" alt="UMAP age group - Testing set"/>
+      <img src="/results/visualization/swin_2targets_age/umap_age_group_train_100.png" width="" alt="UMAP age group - Testing set"/>
       <figcaption style="font-size: 0.9em; margin-top: 5px;">UMAP: Training Set</figcaption>
     </td>
     <td style="border: 1px solid #ccc; padding: 5px; text-align: center;">
-      <img src="/visualization/swin_2targets_age/umap_age_group_val_100.png" width="" alt="UMAP age group - Validation set"/>
+      <img src="/results/visualization/swin_2targets_age/umap_age_group_val_100.png" width="" alt="UMAP age group - Validation set"/>
       <figcaption style="font-size: 0.9em; margin-top: 5px;">UMAP: Validation Set</figcaption>
     </td>
     <td style="border: 1px solid #ccc; padding: 5px; text-align: center;">
-      <img src="/visualization/swin_2targets_age/umap_age_group_test_100.png" width="" alt="UMAP age group - Test set"/>
+      <img src="/results/visualization/swin_2targets_age/umap_age_group_test_100.png" width="" alt="UMAP age group - Test set"/>
       <figcaption style="font-size: 0.9em; margin-top: 5px;">UMAP: Test Set</figcaption>
     </td>
   </tr>
@@ -132,7 +152,7 @@ These plots show the projection of the fMRI features learned by the Swin 4D mode
 <!-- _UMAP projection of the SWIN 4D features for age group classification on the training, validation, and test datasets (from left to right). -->
 
 <!-- Integrated Gradients visualization showing key fMRI regions influencing the model’s age group prediction.
-![IG age group](/visualization/swin_2targets_age/ADNI_age_group_target0_tsh10.png)
+![IG age group](/results/visualization/swin_2targets_age/ADNI_age_group_target0_tsh10.png)
 *Integrated Gradients visualization showing key fMRI regions influencing the model’s age group prediction.* -->
 
 ### 2. Sex
@@ -142,15 +162,15 @@ These plots show the projection of the fMRI features learned by the Swin 4D mode
 <table align="center" style="border-collapse: collapse;">
   <tr>
     <td style="border: 1px solid #ccc; padding: 5px; text-align: center;">
-      <img src="/visualization/swin_2targets_sex/tsne_sex_train_50.png" width="" alt="t-SNE sex - Training set"/>
+      <img src="/results/visualization/swin_2targets_sex/tsne_sex_train_50.png" width="" alt="t-SNE sex - Training set"/>
       <figcaption style="font-size: 0.9em; margin-top: 5px;">t-SNE: Training Set</figcaption>
     </td>
     <td style="border: 1px solid #ccc; padding: 5px; text-align: center;">
-      <img src="/visualization/swin_2targets_sex/tsne_sex_val_50.png" width="" alt="t-SNE sex - Validation set"/>
+      <img src="/results/visualization/swin_2targets_sex/tsne_sex_val_50.png" width="" alt="t-SNE sex - Validation set"/>
       <figcaption style="font-size: 0.9em; margin-top: 5px;">t-SNE: Validation Set</figcaption>
     </td>
     <td style="border: 1px solid #ccc; padding: 5px; text-align: center;">
-      <img src="/visualization/swin_2targets_sex/tsne_sex_test_50.png" width="" alt="t-SNE sex - Test set"/>
+      <img src="/results/visualization/swin_2targets_sex/tsne_sex_test_50.png" width="" alt="t-SNE sex - Test set"/>
       <figcaption style="font-size: 0.9em; margin-top: 5px;">t-SNE: Test Set</figcaption>
     </td>
   </tr>
@@ -159,22 +179,22 @@ These plots show the projection of the fMRI features learned by the Swin 4D mode
 <table align="center" style="border-collapse: collapse;">
   <tr>
     <td style="border: 1px solid #ccc; padding: 5px; text-align: center;">
-      <img src="/visualization/swin_2targets_sex/umap_sex_train_100.png" width="" alt="UMAP sex - Training set"/>
+      <img src="/results/visualization/swin_2targets_sex/umap_sex_train_100.png" width="" alt="UMAP sex - Training set"/>
       <figcaption style="font-size: 0.9em; margin-top: 5px;">UMAP: Training Set</figcaption>
     </td>
     <td style="border: 1px solid #ccc; padding: 5px; text-align: center;">
-      <img src="/visualization/swin_2targets_sex/umap_sex_val_100.png" width="" alt="UMAP sex - Validation set"/>
+      <img src="/results/visualization/swin_2targets_sex/umap_sex_val_100.png" width="" alt="UMAP sex - Validation set"/>
       <figcaption style="font-size: 0.9em; margin-top: 5px;">UMAP: Validation Set</figcaption>
     </td>
     <td style="border: 1px solid #ccc; padding: 5px; text-align: center;">
-      <img src="/visualization/swin_2targets_sex/umap_sex_test_100.png" width="" alt="UMAP sex - Test set"/>
+      <img src="/results/visualization/swin_2targets_sex/umap_sex_test_100.png" width="" alt="UMAP sex - Test set"/>
       <figcaption style="font-size: 0.9em; margin-top: 5px;">UMAP: Test Set</figcaption>
     </td>
   </tr>
 </table>
 
 <!-- Integrated Gradients visualization showing key fMRI regions influencing the model’s sex prediction.
-![IG sex](/visualization/swin_2targets_sex/ADNI_sex_target0_10.png)
+![IG sex](/results/visualization/swin_2targets_sex/ADNI_sex_target0_10.png)
 *Integrated Gradients visualization showing key fMRI regions influencing the model’s sex prediction.* -->
 
 ### 3. Four-Target Classification (Age and Sex Combined)
@@ -184,15 +204,15 @@ These plots show the projection of the fMRI features learned by the Swin 4D mode
 <table align="center" style="border-collapse: collapse;">
   <tr>
     <td style="border: 1px solid #ccc; padding: 5px; text-align: center;">
-      <img src="/visualization/swin_4targets_AgeSex/tsne_4targets_train_50.png" width="" alt="t-SNE 4-target - Training set"/>
+      <img src="/results/visualization/swin_4targets_AgeSex/tsne_4targets_train_50.png" width="" alt="t-SNE 4-target - Training set"/>
       <figcaption style="font-size: 0.9em; margin-top: 5px;">t-SNE: Training Set</figcaption>
     </td>
     <td style="border: 1px solid #ccc; padding: 5px; text-align: center;">
-      <img src="/visualization/swin_4targets_AgeSex/tsne_4targets_val_50.png" width="" alt="t-SNE 4-target - Validation set"/>
+      <img src="/results/visualization/swin_4targets_AgeSex/tsne_4targets_val_50.png" width="" alt="t-SNE 4-target - Validation set"/>
       <figcaption style="font-size: 0.9em; margin-top: 5px;">t-SNE: Validation Set</figcaption>
     </td>
     <td style="border: 1px solid #ccc; padding: 5px; text-align: center;">
-      <img src="/visualization/swin_4targets_AgeSex/tsne_4targets_test_50.png" width="" alt="t-SNE 4-target - Test set"/>
+      <img src="/results/visualization/swin_4targets_AgeSex/tsne_4targets_test_50.png" width="" alt="t-SNE 4-target - Test set"/>
       <figcaption style="font-size: 0.9em; margin-top: 5px;">t-SNE: Test Set</figcaption>
     </td>
   </tr>
@@ -201,15 +221,15 @@ These plots show the projection of the fMRI features learned by the Swin 4D mode
 <table align="center" style="border-collapse: collapse;">
   <tr>
     <td style="border: 1px solid #ccc; padding: 5px; text-align: center;">
-      <img src="/visualization/swin_4targets_AgeSex/umap_4targets_train_100.png" width="" alt="UMAP 4-target - Training set"/>
+      <img src="/results/visualization/swin_4targets_AgeSex/umap_4targets_train_100.png" width="" alt="UMAP 4-target - Training set"/>
       <figcaption style="font-size: 0.9em; margin-top: 5px;">UMAP: Training Set</figcaption>
     </td>
     <td style="border: 1px solid #ccc; padding: 5px; text-align: center;">
-      <img src="/visualization/swin_4targets_AgeSex/umap_4targets_val_100.png" width="" alt="UMAP 4-target - Validation set"/>
+      <img src="/results/visualization/swin_4targets_AgeSex/umap_4targets_val_100.png" width="" alt="UMAP 4-target - Validation set"/>
       <figcaption style="font-size: 0.9em; margin-top: 5px;">UMAP: Validation Set</figcaption>
     </td>
     <td style="border: 1px solid #ccc; padding: 5px; text-align: center;">
-      <img src="/visualization/swin_4targets_AgeSex/umap_4targets_test_100.png" width="" alt="UMAP 4-target - Test set"/>
+      <img src="/results/visualization/swin_4targets_AgeSex/umap_4targets_test_100.png" width="" alt="UMAP 4-target - Test set"/>
       <figcaption style="font-size: 0.9em; margin-top: 5px;">UMAP: Test Set</figcaption>
     </td>
   </tr>
@@ -224,15 +244,15 @@ These plots show the projection of the fMRI features learned by the Swin 4D mode
 <table align="center" style="border-collapse: collapse;">
   <tr>
     <td style="border: 1px solid #ccc; padding: 5px; text-align: center;">
-      <img src="/visualization/swin_2targets_AD/tsne_AD_train_50.png" width="" alt="t-SNE AD - Training set"/>
+      <img src="/results/visualization/swin_2targets_AD/tsne_AD_train_50.png" width="" alt="t-SNE AD - Training set"/>
       <figcaption style="font-size: 0.9em; margin-top: 5px;">t-SNE: Training Set</figcaption>
     </td>
     <td style="border: 1px solid #ccc; padding: 5px; text-align: center;">
-      <img src="/visualization/swin_2targets_AD/tsne_AD_val_50.png" width="" alt="t-SNE AD - Validation set"/>
+      <img src="/results/visualization/swin_2targets_AD/tsne_AD_val_50.png" width="" alt="t-SNE AD - Validation set"/>
       <figcaption style="font-size: 0.9em; margin-top: 5px;">t-SNE: Validation Set</figcaption>
     </td>
     <td style="border: 1px solid #ccc; padding: 5px; text-align: center;">
-      <img src="/visualization/swin_2targets_AD/tsne_AD_test_50.png" width="" alt="t-SNE AD - Test set"/>
+      <img src="/results/visualization/swin_2targets_AD/tsne_AD_test_50.png" width="" alt="t-SNE AD - Test set"/>
       <figcaption style="font-size: 0.9em; margin-top: 5px;">t-SNE: Test Set</figcaption>
     </td>
   </tr>
@@ -241,20 +261,20 @@ These plots show the projection of the fMRI features learned by the Swin 4D mode
 <table align="center" style="border-collapse: collapse;">
   <tr>
     <td style="border: 1px solid #ccc; padding: 5px; text-align: center;">
-      <img src="/visualization/swin_2targets_AD/umap_AD_train_100.png" width="" alt="UMAP AD - Training set"/>
+      <img src="/results/visualization/swin_2targets_AD/umap_AD_train_100.png" width="" alt="UMAP AD - Training set"/>
       <figcaption style="font-size: 0.9em; margin-top: 5px;">UMAP: Training Set</figcaption>
     </td>
     <td style="border: 1px solid #ccc; padding: 5px; text-align: center;">
-      <img src="/visualization/swin_2targets_AD/umap_AD_val_100.png" width="" alt="UMAP AD - Validation set"/>
+      <img src="/results/visualization/swin_2targets_AD/umap_AD_val_100.png" width="" alt="UMAP AD - Validation set"/>
       <figcaption style="font-size: 0.9em; margin-top: 5px;">UMAP: Validation Set</figcaption>
     </td>
     <td style="border: 1px solid #ccc; padding: 5px; text-align: center;">
-      <img src="/visualization/swin_2targets_AD/umap_AD_test_100.png" width="" alt="UMAP AD - Test set"/>
+      <img src="/results/visualization/swin_2targets_AD/umap_AD_test_100.png" width="" alt="UMAP AD - Test set"/>
       <figcaption style="font-size: 0.9em; margin-top: 5px;">UMAP: Test Set</figcaption>
     </td>
   </tr>
 </table>
 
 <!-- Integrated Gradients visualization showing key fMRI regions influencing the model’s AD prediction.
-![IG AD](/visualization/swin_2targets_AD/ADNI_AD_target0_min.png)
+![IG AD](/results/visualization/swin_2targets_AD/ADNI_AD_target0_min.png)
 *Integrated Gradients visualization showing key fMRI regions influencing the model’s AD prediction.* -->
