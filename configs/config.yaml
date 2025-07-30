@@ -6,18 +6,11 @@ train_split: 0.7
 val_split: 0.15
 test_split: 0.15
 sequence_length: 20
-path_pickle_dataset: /mnt/data/iai/Projects/ABCDE/fmris/CLIP_fmris/SwiFT/src/data/pickle_dataset
-csv_path_adni: /mnt/data/iai/Projects/ABCDE/fmris/CLIP_fmris/SwiFT/src/data/paths_dataset_adni.csv
-csv_path_pain: /mnt/data/iai/Projects/ABCDE/fmris/CLIP_fmris/SwiFT/src/data/paths_dataset_pain.csv
+path_pickle_dataset: src/data/pickle_dataset
+csv_path_adni: src/data/paths_dataset_adni.csv
+csv_path_pain: src/data/paths_dataset_pain.csv
 
 #! Best models
-# best_swin_age_group: /mnt/data/iai/Projects/ABCDE/fmris/CLIP_fmris/SwiFT/results/runs/2025-06-27_08-29-36/model-e28.pth # 93.3% val accuracy
-# best_swin_sex: /mnt/data/iai/Projects/ABCDE/fmris/CLIP_fmris/SwiFT/results/runs/2025-06-27_10-43-26/model-e9.pth # 93% val accuracy
-# best_swin_AD:  /mnt/data/iai/Projects/ABCDE/fmris/CLIP_fmris/SwiFT/results/runs/2025-07-04_09-40-42/model-e24.pth # 93% val accuracy
-# best_swin_4targets: /mnt/data/iai/Projects/ABCDE/fmris/CLIP_fmris/SwiFT/results/runs/2025-07-03_17-33-53/model-e14.pth
-# best_CLIP:  /mnt/data/iai/Projects/ABCDE/fmris/CLIP_fmris/SwiFT/results/runs/2025-07-02_15-44-05/model-e26.pth
-# best_swin_pain_age: /mnt/data/iai/Projects/ABCDE/fmris/CLIP_fmris/SwiFT/results/runs/2025-07-14_17-17-15/model-e57.pth
-# best_swin_pain_sex: /mnt/data/iai/Projects/ABCDE/fmris/CLIP_fmris/SwiFT/results/runs/2025-07-15_10-42-35/model-e21.pth
 best_swin_age_group: results/best_models/best_swin_age_group.pth
 best_swin_sex: results/best_models/best_swin_sex.pth
 best_swin_AD:  results/best_models/best_swin_AD.pth

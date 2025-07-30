@@ -54,7 +54,6 @@ class ADNISwiFTDataset(Dataset):
 
         # Filtering
         print(f"Filtering data for {self.config['downstream_task']} task...")
-
         if self.config["downstream_task"] == "age_group":
             meta_df = meta_df[(meta_df["Age"] < 69) | (meta_df["Age"] > 78)]
             meta_df["Target"] = meta_df["Age"].apply(lambda x: 0 if x < 69 else 1)
