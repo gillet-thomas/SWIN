@@ -1,3 +1,0 @@
-micromamba activate /mnt/data/iai/micromamba/envs/CLIP_xray
-cd fMRI2Vec/
-nvitop 

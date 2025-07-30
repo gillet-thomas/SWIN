@@ -44,16 +44,10 @@ class ADNISwiFTDataset(Dataset):
 
         if generate_data:
             img = nib.load(self.data[0][1]).dataobj[:, :, :, 70]
-            nib.save(
-                nib.Nifti1Image(img, np.eye(4)),
-                f"./results/visualization/sample_{self.mode}_adni.nii",
-            )
+            nib.save(nib.Nifti1Image(img, np.eye(4)), f"./results/visualization/sample_{self.mode}_adni.nii")
 
-        print(f"number of {self.mode} subj: {len(subjects)}")
-        print(f"length of {self.mode} samples: {len(self.data)}")
-        print(
-            f"ADNISwiFTDataset: Prepared {len(self.data)} sequences for {'training' if self.train else 'validation/testing'}."
-        )
+        print(f"ADNISwiFTDataset number of {self.mode} subj: {len(subjects)}")
+        print(f"ADNISwiFTDataset length of {self.mode} samples: {len(self.data)}")
 
     def split_subjects(self):
         all_subjects = dict()
@@ -102,13 +96,7 @@ class ADNISwiFTDataset(Dataset):
         # print(f"Number of test subjects with target 1: {num_test_target_1}")
 
         # Save datasets and subjects
-        save_datasets(
-            self.config["path_pickle_dataset"],
-            all_subjects,
-            train_ids,
-            val_ids,
-            test_ids,
-        )
+        save_datasets(self.config["path_pickle_dataset"], all_subjects, train_ids, val_ids, test_ids)
         save_subjects(self.config["path_pickle_dataset"], train_ids, val_ids, test_ids)
         print("Datasets saved!")
 
@@ -141,12 +129,9 @@ class Model(nn.Module):
             last_layer_full_MSA=config["last_layer_full_MSA"],
             attn_drop_rate=config["dropout"],
         )
-        # num_tokens = config["embed_dim"] * (config["c_multiplier"] ** (config["n_stages"] - 1))
-        # self.output_head = clf_mlpv1(num_classes=2, num_tokens = num_tokens)
 
     def forward(self, x):
         x = self.model(x)  # input ([8, 1, 112, 112, 112, 20]) -> ([8, 288, 2, 2, 2, 20])
-        # x = self.output_head(x)     # ([8, 288, 2, 2, 2, 20]) -> ([8, 1])
         return x
 
     def get_embeddings(self, x):
@@ -288,9 +273,7 @@ class Trainer:
         running_loss, correct, total = 0.0, 0, 0
 
         for i, (fmri_sequence, sex, age) in enumerate(self.dataloader):
-            fmri_sequence, sex = fmri_sequence.to(self.device), sex.to(
-                self.device
-            )  ## (batch_size, 64, 64, 48, 140) and (batch_size)
+            fmri_sequence, sex = fmri_sequence.to(self.device), sex.to(self.device)
             with torch.autocast(device_type="cuda", dtype=torch.float16):
                 loss = self.model(fmri_sequence, sex)
 

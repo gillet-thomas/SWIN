@@ -1,0 +1,54 @@
+#! DATASET
+generate_data: True # Generate and save data to pickle
+apply_transform: False # Apply MONAI transform
+downstream_task: AD # age_group or sex or AD
+train_split: 0.7
+val_split: 0.15
+test_split: 0.15
+sequence_length: 20
+path_pickle_dataset: src/data/pickle_dataset/ADNI_AD
+csv_path_adni: src/data/paths_dataset_adni.csv
+csv_path_pain: src/data/paths_dataset_pain.csv
+
+#! Best models
+best_swin_age_group: results/best_models/best_swin_age_group.pth
+best_swin_sex: results/best_models/best_swin_sex.pth
+best_swin_AD: results/best_models/best_swin_AD.pth
+best_swin_4targets: results/best_models/best_swin_4targets.pth
+best_CLIP: results/best_models/best_CLIP.pth
+best_swin_pain_age: results/best_models/best_swin_pain_age.pth
+best_swin_pain_sex: results/best_models/best_swin_pain_sex.pth
+
+#! TRAINING
+seed: 42
+num_workers: 4
+
+epochs: 30
+batch_size: 8
+eval_batch_size: 1
+learning_rate: 0.00001
+dropout: 0.8
+weight_decay: 0.03
+
+#! SWIN (swin4d_ver7) config
+img_size: [112, 112, 112, 20] # [96, 96, 96, 20]
+in_chans: 1
+embed_dim: 36
+window_size: [4, 4, 4, 4]
+first_window_size: [4, 4, 4, 4]
+patch_size: [7, 7, 7, 1] # [6, 6, 6, 1]
+depths: [2, 2, 6, 2]
+num_heads: [3, 6, 12, 24]
+c_multiplier: 2
+last_layer_full_MSA: False
+n_stages: 4
+num_classes: 2 # number of target classes
+
+#! SWIN CLIP
+text_embedding: 2
+image_embedding: 46080
+projection_dim: 256
+
+#! Visualization
+map_task: AD # for maps and gradients
+map_method: tsne # for viz_maps

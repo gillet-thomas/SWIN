@@ -1,3 +1,4 @@
+import logging
 import os
 import tempfile
 
@@ -5,81 +6,70 @@ import nibabel as nib
 import numpy as np
 import torch
 import yaml
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from src.models.SWIN4D import SWIN4D
 
 config = yaml.safe_load(open("configs/config.yaml", "r"))
 app = FastAPI()
-model = SWIN4D(config)
-model.load_state_dict(torch.load(config["best_swin_age_group"], map_location=torch.device("cpu")))
-model.eval()
+app.mount("/API", StaticFiles(directory="API"))
+
+model_age = SWIN4D(config)
+model_age.load_state_dict(torch.load(config["best_swin_age_group"], map_location=torch.device("cpu")))
+model_age.eval()
+
+model_sex = SWIN4D(config)
+model_sex.load_state_dict(torch.load(config["best_swin_sex"], map_location=torch.device("cpu")))
+model_sex.eval()
+
+origins = [
+    "http://localhost",  # Browser localhost
+    "http://127.0.0.1",  # Alternative localhost
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
+#! GET Routes
 @app.get("/")
 def read_root():
-    return {"message": "Welcome to the ADNI dataset Age Group Prediction API!"}
+    return {"message": "Welcome to the ADNI dataset Prediction API!"}
 
 
-def pad_4d(fmri_data):
-    background_value = fmri_data[0, 0, 0]  # Find background value
-    padded_volume = np.full(config["img_size"], background_value, dtype=fmri_data.dtype)
-
-    pad_x = (config["img_size"][0] - fmri_data.shape[0]) // 2
-    pad_y = (config["img_size"][1] - fmri_data.shape[1]) // 2
-    pad_z = (config["img_size"][2] - fmri_data.shape[2]) // 2
-
-    padded_volume[
-        pad_x : pad_x + fmri_data.shape[0], pad_y : pad_y + fmri_data.shape[1], pad_z : pad_z + fmri_data.shape[2]
-    ] = fmri_data
-
-    return torch.tensor(padded_volume, dtype=torch.float32)
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "message": "API is running"}
 
 
-class PredictionPath(BaseModel):
-    path: str  # one field path of type string
+@app.get("/help")
+def get_model_info():
+    return {
+        "model_name": "SWIN4D",
+        "version": "1.0.0",
+        "trained_on": "ADNI Dataset",
+        "input_shape": config["img_size"],  # Assuming last dim is 20
+        "output_classes": ["Age Group (Young, Old), Gender (F, M)"],
+    }
 
 
+#! Helper Functions
 class PredictionResponse(BaseModel):
-    age_group: str
+    prediction: str
+    confidence: float
+    raw_output: float
+    IntegratedGradients: str
 
 
-@app.post("/predict_age", response_model=PredictionResponse)
-def predict_age(fmri_path: PredictionPath):
-
-    try:
-        fmri_img = nib.load(fmri_path.path)
-        fmri_data = fmri_img.dataobj[:, :, :, 70 : 70 + 20]
-        fmri_data = pad_4d(fmri_data)  # Pad to 120x120x120x20
-        fmri_data = (fmri_data - fmri_data.min()) / (fmri_data.max() - fmri_data.min() + 1e-8)
-        fmri_data = fmri_data.unsqueeze(0).unsqueeze(0)
-        fmri_data = fmri_data.to(torch.device("cpu"))
-
-        with torch.no_grad():
-            output = model(fmri_data)
-
-        output = output.view(-1)  # for BCEWithLogitsLoss
-        predicted_labels = (torch.sigmoid(output) >= 0.5).long()
-
-        age_group = "Young" if predicted_labels == 0 else "Old"
-
-        return {"age_group": age_group}
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"File not found at: {fmri_path}")
-    except Exception as e:
-        print(f"Prediction error: {e}")
-        raise HTTPException(status_code=500, detail=f"An error occurred during prediction: {e}")
-
-
-@app.post("/predict_age_default", response_model=PredictionResponse)
-def predict_age_default():
-    fmri_path = PredictionPath(path="API/fmri.nii")
-    return predict_age(fmri_path)
-
-
-@app.post("/predict_niftii")
-async def predict_niftii(nifti_file: UploadFile):
+async def load_and_predict(nifti_file, model):
 
     with tempfile.NamedTemporaryFile(suffix=".nii", delete=False) as tmp:
         try:
@@ -98,18 +88,72 @@ async def predict_niftii(nifti_file: UploadFile):
             with torch.no_grad():
                 output = model(fmri_data)
 
-            output = output.view(-1)  # for BCEWithLogitsLoss
-            predicted_labels = (torch.sigmoid(output) >= 0.5).long()
-
-            age_group = "Young" if predicted_labels == 0 else "Old"
-            return {"age_group": age_group}
+            return output
 
         except FileNotFoundError:
             raise HTTPException(status_code=404, detail=f"File not found at: {nifti_file.filename}")
         except Exception as e:
-            print(f"Prediction error: {e}")
+            logging.error(f"Prediction error: {e}")
             raise HTTPException(status_code=500, detail=f"An error occurred during prediction: {e}")
         finally:
             if os.path.exists(tmp.name):
                 os.remove(tmp.name)
-                print(f"Temporary file removed: {tmp.name}")
+                logging.info(f"Temporary file removed: {tmp.name}")
+
+
+def pad_4d(fmri_data):
+    background_value = fmri_data[0, 0, 0]  # Find background value
+    padded_volume = np.full(config["img_size"], background_value, dtype=fmri_data.dtype)
+
+    pad_x = (config["img_size"][0] - fmri_data.shape[0]) // 2
+    pad_y = (config["img_size"][1] - fmri_data.shape[1]) // 2
+    pad_z = (config["img_size"][2] - fmri_data.shape[2]) // 2
+
+    padded_volume[
+        pad_x : pad_x + fmri_data.shape[0], pad_y : pad_y + fmri_data.shape[1], pad_z : pad_z + fmri_data.shape[2]
+    ] = fmri_data
+
+    return torch.tensor(padded_volume, dtype=torch.float32)
+
+
+#! POST Routes
+@app.post("/predict_age", response_model=PredictionResponse)
+async def predict_age(nifti_file: UploadFile):
+
+    model_output = await load_and_predict(nifti_file, model_age)
+
+    output = model_output.view(-1)  # for BCEWithLogitsLoss
+    sigmoid_value = torch.sigmoid(output).item()
+    sigmoid_probability = int(sigmoid_value <= 0.5)
+
+    prediction = "Young" if sigmoid_probability else "Old"
+    confidence = sigmoid_value if prediction == "Old" else 1 - sigmoid_value
+    gradients_path = f"/API/ADNI_age_group_target{sigmoid_probability}_tsh10.png"
+
+    return {
+        "prediction": prediction,
+        "confidence": round(confidence, 3),
+        "raw_output": round(output.item(), 3),
+        "IntegratedGradients": gradients_path,
+    }
+
+
+@app.post("/predict_sex", response_model=PredictionResponse)
+async def predict_sex(nifti_file: UploadFile):
+
+    model_output = await load_and_predict(nifti_file, model_sex)
+
+    output = model_output.view(-1)  # for BCEWithLogitsLoss
+    sigmoid_value = torch.sigmoid(output).item()
+    sigmoid_probability = int(sigmoid_value <= 0.5)
+
+    sex = "F" if sigmoid_probability else "M"
+    confidence = sigmoid_value if sex == "M" else 1 - sigmoid_value
+    gradients_path = f"/API/ADNI_sex_target{sigmoid_probability}_tsh10.png"
+
+    return {
+        "prediction": sex,
+        "confidence": round(confidence, 3),
+        "raw_output": round(output.item(), 3),
+        "IntegratedGradients": gradients_path,
+    }
