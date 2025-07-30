@@ -1,19 +1,15 @@
-hidden_scripts/
 metadata/
 
-
+# Project
 output/
 results/runs/
-# *.pkl
 *.csv
 *.nii
 python/
 example/
-
 src/data/pickle_dataset/*
 !src/data/pickle_dataset/ADNI_*/
-
-
+startup.txt
 .neptune
 .vscode
 wandb
@@ -43,16 +39,6 @@ wheels/
 *.egg
 MANIFEST
 
-# PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
 # Unit test / coverage reports
 htmlcov/
 .tox/
@@ -64,11 +50,6 @@ coverage.xml
 *.cover
 .hypothesis/
 .pytest_cache/
-
-# Translations
-*.mo
-*.pot
-
 
 # PyBuilder
 target/
@@ -87,10 +68,6 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-
-# Spyder project settings
-.spyderproject
-.spyproject
 
 # IDEs
 .idea

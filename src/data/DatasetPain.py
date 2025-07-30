@@ -10,7 +10,7 @@ from torch.utils.data import Dataset
 from src.utils.helpers import get_timepoints_pain, load_and_process_fmri, save_datasets
 
 
-# Pain study Marian Dataset
+# Pain study - resting state fMRI Dataset
 class PainDataset(Dataset):
     def __init__(self, config, mode="train", generate_data=False):
         self.mode = mode
