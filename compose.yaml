@@ -1,0 +1,12 @@
+services:
+  backend:
+    image: thomas84/swin:v1
+    ports:
+      - "8000:8000"
+
+  frontend:
+    image: thomas84/swin-frontend:v1
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
