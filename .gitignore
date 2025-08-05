@@ -7,8 +7,9 @@ results/runs/
 *.nii
 python/
 example/
-src/data/pickle_dataset/*
-!src/data/pickle_dataset/ADNI_*/
+ADNI_age/
+*.pkl
+src/data/**/*.txt
 startup.txt
 .neptune
 .vscode

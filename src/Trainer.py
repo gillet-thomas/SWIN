@@ -58,7 +58,7 @@ class Trainer:
     def run(self):
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         path = f"./results/runs/{timestamp}"
-        os.mkdir(path) if not os.path.exists(path) else None
+        os.makedirs(path, exist_ok=True)
 
         print(f"Running on device: {self.device}")
         for epoch in tqdm(range(self.epochs)):
