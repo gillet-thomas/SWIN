@@ -105,6 +105,8 @@ docker compose up --build
 ```
 After the services are up, you can access the application through your browser at http://localhost:80. This provides a nice interface to directly interact with the trained model.
 
+https://github.com/user-attachments/assets/2c87b794-2f90-4477-b78f-b52c3b6f53b3
+
 ---
 
 ## 📊 Visualizations
