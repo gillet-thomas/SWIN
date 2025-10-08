@@ -47,7 +47,7 @@ def update_config(config: dict, args: argparse.Namespace) -> Annotated[dict, "co
 
 def init_trackers(config: dict, args: argparse.Namespace, DDP=False):
     wandb.init(
-        project="fMRI2Vec",
+        project="SWIN",
         config=config,
         name=args.name,
         mode="online" if config["wandb_mode"] == "online" else "disabled",
@@ -55,7 +55,7 @@ def init_trackers(config: dict, args: argparse.Namespace, DDP=False):
     )
 
     # mlflow.set_tracking_uri(uri="http://localhost:8080")
-    # mlflow.set_experiment(experiment_name="fMRI2Vec")
+    # mlflow.set_experiment(experiment_name="NeuroViT")
     # mlflow.start_run(run_name=args.name)
     # mlflow.log_params(config)
 

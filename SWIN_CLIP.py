@@ -486,7 +486,7 @@ if __name__ == "__main__":
     device = torch.device(f"cuda:{args.cuda}" if torch.cuda.is_available() else "cpu")
 
     wandb.init(
-        project="fMRI2Vec",
+        project="NeuroViT",
         config=config,
         name=args.name,
         mode="online" if config["wandb_mode"] == "online" else "disabled",
